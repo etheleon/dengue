@@ -1,5 +1,8 @@
 #!/usr/bin/env Rscript
 
+# Accept positional and kw args
+suppressPackageStartupMessages(library(argparse))
+
 # Geospatial and spatial analysis
 suppressPackageStartupMessages(library(sf))
 
@@ -51,16 +54,37 @@ suppressPackageStartupMessages(library(hydroGOF))
 
 suppressPackageStartupMessages(library(futile.logger))
 
+# Create a parser object
+parser <- ArgumentParser()
+
+# Add arguments
+parser$add_argument(
+  "--model_type",
+  type = "character",
+  default = "sero_climate",
+  help = "Specify the type of the model as a string (e.g., 'sero_climate', 'climate_only', 'sero_only')"
+)
+
+parser$add_argument(
+  "--csv_file_path",
+  type = "character",
+  default = "/workspace/dengue-singapore/data/dengue-cases-climate.csv"
+  help = "Specify the path to the CSV file"
+)
+
+# Parse the arguments
+args <- parser$parse_args()
+
+
 # Config
-root_dir <- "/home/wesley/github/etheleon/national_analysis"
-model_root_dir <- file.path(root_dir, "inla_model")
+model_root_dir <- "/workspace/dengue-singapore"
 
 source(file.path(model_root_dir, "R/create-lagged-data_fn.R"))
 source(file.path(model_root_dir, "R/fit-inla_fn.R"))
 source(file.path(model_root_dir, "R/tscv-prediction_fn.R"))
 source(file.path(model_root_dir, "R/utils_fn.R"))
 
-dengue_singapore <- read_csv(file.path(model_root_dir, "data", "dengue-cases-climate.csv")) %>%
+dengue_singapore <- read_csv(args$csv_file_path) %>%
   mutate(date = as.Date(date, format = "%d/%m/%Y"))
 
 df_model <- lag_data(dengue_singapore)
@@ -72,7 +96,20 @@ sero_only <- "+f(inla.group(time_since_switch, n = 18), model = 'rw2', scale.mod
 climate_only <- "+f(inla.group(max_t_scale_12_wk_avg_0),model = 'rw2', scale.model = TRUE, hyper = precision_prior)+f(inla.group(nino34_12_wk_avg_4, n = 12), model = 'rw2', scale.model = TRUE, hyper = precision_prior)+f(inla.group(days_no_rain_12_wk_total_0),model = 'rw2', scale.model = TRUE, hyper = precision_prior)"
 # nolint end
 
-forms <- c(sero_climate, climate_only, sero_only)
+forms <- c()
+if (args$model_type == 'sero_climate') {
+  forms <- c(forms, sero_climate)
+}
+else if (args$model_type == 'climate_only'){
+  forms <- c(forms, climate_only)
+}
+else if (args$model_type == 'sero_only'){
+  forms <- c(forms, sero_only)
+}
+else {
+	q(status=0)
+}
+flog.info(sprintf("Running predict using %s model.", args$model_type))
 
 c_args <- list(0, "all", "estimated") # To run all models for forecast horizon of 0 weeks
 df_eval <- df_model |>
