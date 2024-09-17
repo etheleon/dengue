@@ -1,55 +1,55 @@
 #!/usr/bin/env Rscript
 
 # Geospatial and spatial analysis
-library(sf)
+suppressPackageStartupMessages(library(sf))
 
 # Data manipulation and wrangling
-library(tidyverse) # Includes dplyr, tidyr, ggplot2, and more
-library(dplyr) # Already part of tidyverse but listed for clarity
-library(tidyr) # Already part of tidyverse but listed for clarity
-library(data.table)
-library(janitor)
+suppressPackageStartupMessages(library(tidyverse)) # Includes dplyr, tidyr, ggplot2, and more
+suppressPackageStartupMessages(library(dplyr)) # Already part of tidyverse but listed for clarity
+suppressPackageStartupMessages(library(tidyr)) # Already part of tidyverse but listed for clarity
+suppressPackageStartupMessages(library(data.table))
+suppressPackageStartupMessages(library(janitor))
 
 # Date and time manipulation
-library(lubridate) # Loaded once, removing duplicate
+suppressPackageStartupMessages(library(lubridate)) # Loaded once, removing duplicate
 
 # File path and Excel handling
-library(here)
-library(openxlsx)
+suppressPackageStartupMessages(library(here))
+suppressPackageStartupMessages(library(openxlsx))
 
 # Visualization
-library(ggplot2) # Already part of tidyverse but listed for clarity
-library(ggpubr)
-library(corrplot)
-library(cowplot)
-library(RColorBrewer)
-library(MetBrewer)
-library(scales)
+suppressPackageStartupMessages(library(ggplot2)) # Already part of tidyverse but listed for clarity
+suppressPackageStartupMessages(library(ggpubr))
+suppressPackageStartupMessages(library(corrplot))
+suppressPackageStartupMessages(library(cowplot))
+suppressPackageStartupMessages(library(RColorBrewer))
+suppressPackageStartupMessages(library(MetBrewer))
+suppressPackageStartupMessages(library(scales))
 
 # Spatial modeling and Bayesian inference
-library(INLA)
+suppressPackageStartupMessages(library(INLA))
 
 # Machine learning and statistical modeling
-library(nnet)
-library(splines)
+suppressPackageStartupMessages(library(nnet))
+suppressPackageStartupMessages(library(splines))
 
 # Utilities and fonts
-library(tibble)
-library(stringr)
-library(showtext)
-library(sysfonts)
-library(purrr)
-library(scoringutils)
-library(pROC)
+suppressPackageStartupMessages(library(tibble))
+suppressPackageStartupMessages(library(stringr))
+suppressPackageStartupMessages(library(showtext))
+suppressPackageStartupMessages(library(sysfonts))
+suppressPackageStartupMessages(library(purrr))
+suppressPackageStartupMessages(library(scoringutils))
+suppressPackageStartupMessages(library(pROC))
 
 # Time series and data transformation
-library(zoo)
-library(tidyquant)
+suppressPackageStartupMessages(library(zoo))
+suppressPackageStartupMessages(library(tidyquant))
 
 # Hydrological goodness of fit
-library(hydroGOF)
+suppressPackageStartupMessages(library(hydroGOF))
 
-library(futile.logger)
+suppressPackageStartupMessages(library(futile.logger))
 
 # Config
 root_dir <- "/home/wesley/github/etheleon/national_analysis"
