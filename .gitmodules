@@ -1,0 +1,3 @@
+[submodule "inla_model"]
+	path = inla_model
+	url = https://github.com/EmilieFinch/dengue-singapore.git
