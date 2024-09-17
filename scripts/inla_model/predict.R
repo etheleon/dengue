@@ -52,16 +52,17 @@ library(hydroGOF)
 library(futile.logger)
 
 # Config
-root_dir = "../inla_model"
+root_dir = "/home/wesley/github/etheleon/national_analysis"
+model_root_dir = "../inla_model"
 
 
-source(file.path(root_dir, "R/create-lagged-data_fn.R")
-source(file.path(root_dir, "R/fit-inla_fn.R")
-source(file.path(root_dir, "R/tscv-prediction_fn.R")
-source(file.path(root_dir, "R/utils_fn.R")
+source(file.path(model_root_dir, "R/create-lagged-data_fn.R")
+source(file.path(model_root_dir, "R/fit-inla_fn.R")
+source(file.path(model_root_dir, "R/tscv-prediction_fn.R")
+source(file.path(model_root_dir, "R/utils_fn.R")
 
 
-dengue_singapore = read_csv(file.path(root_dir, "data", "dengue-cases-climate.csv")) %>%
+dengue_singapore = read_csv(file.path(model_root_dir, "data", "dengue-cases-climate.csv")) %>%
   mutate(date = as.Date(date, format = "%d/%m/%Y"))
 
 df_model = lag_data(dengue_singapore)
