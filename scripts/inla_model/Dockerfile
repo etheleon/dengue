@@ -11,14 +11,21 @@ RUN apt-get update -qq && apt-get install -y --no-install-recommends \
     dirmngr \
     g++ \
     git \
+    cmake \
     wget \
     libudunits2-dev \
     bind9 \
+    libssl-dev \
+    libfontconfig1-dev \
     libcurl4-openssl-dev \
     libharfbuzz-dev \
     libfribidi-dev \
     lib32z1 \
     libgsl-dev \
+    gdal-bin \
+    proj-bin \
+    libgdal-dev \
+    libproj-dev \
     && apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
@@ -36,8 +43,8 @@ RUN R -e "install.packages(c(\
     'sf', 'tidyverse', 'dplyr', 'tidyr', 'data.table', 'janitor', 'lubridate', \
     'here', 'openxlsx', 'ggplot2', 'ggpubr', 'corrplot', 'cowplot', 'RColorBrewer', \
     'MetBrewer', 'scales', 'INLA', 'nnet', 'splines', 'tibble', 'stringr', 'showtext', \
-    'sysfonts', 'purrr', 'scoringutils', 'pROC', 'zoo', 'tidyquant', 'hydroGOF', 'futile.logger'\
-    ))"
+    'sysfonts', 'purrr', 'scoringutils', 'pROC', 'zoo', 'tidyquant', 'hydroGOF', \
+    'futile.logger', 'argparse'))"
 
 # Clean up
 RUN apt-get clean && \
