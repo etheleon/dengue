@@ -68,7 +68,7 @@ parser$add_argument(
 parser$add_argument(
   "--csv_file_path",
   type = "character",
-  default = "/workspace/dengue-singapore/data/dengue-cases-climate.csv"
+  default = "/workspace/dengue-singapore/data/dengue-cases-climate.csv",
   help = "Specify the path to the CSV file"
 )
 
@@ -99,15 +99,12 @@ climate_only <- "+f(inla.group(max_t_scale_12_wk_avg_0),model = 'rw2', scale.mod
 forms <- c()
 if (args$model_type == 'sero_climate') {
   forms <- c(forms, sero_climate)
-}
-else if (args$model_type == 'climate_only'){
+} else if (args$model_type == 'climate_only'){
   forms <- c(forms, climate_only)
-}
-else if (args$model_type == 'sero_only'){
+} else if (args$model_type == 'sero_only'){
   forms <- c(forms, sero_only)
-}
-else {
-	q(status=0)
+} else {
+  q(status=0)
 }
 flog.info(sprintf("Running predict using %s model.", args$model_type))
 

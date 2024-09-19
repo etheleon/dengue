@@ -42,9 +42,12 @@ RUN wget -qO- https://cloud.r-project.org/bin/linux/ubuntu/marutter_pubkey.asc |
 RUN R -e "install.packages(c(\
     'sf', 'tidyverse', 'dplyr', 'tidyr', 'data.table', 'janitor', 'lubridate', \
     'here', 'openxlsx', 'ggplot2', 'ggpubr', 'corrplot', 'cowplot', 'RColorBrewer', \
-    'MetBrewer', 'scales', 'INLA', 'nnet', 'splines', 'tibble', 'stringr', 'showtext', \
+    'MetBrewer', 'scales', 'nnet', 'splines', 'tibble', 'stringr', 'showtext', \
     'sysfonts', 'purrr', 'scoringutils', 'pROC', 'zoo', 'tidyquant', 'hydroGOF', \
     'futile.logger', 'argparse'))"
+
+# Install INLA
+RUN R -e "install.packages('INLA',repos=c(getOption('repos'),INLA='https://inla.r-inla-download.org/R/stable'), dep=TRUE)"
 
 # Clean up
 RUN apt-get clean && \
