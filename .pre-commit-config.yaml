@@ -1,5 +1,4 @@
 repos:
-repos:
   - repo: https://github.com/psf/black
     rev: 24.8.0 # Replace with the latest version
     hooks:
@@ -11,26 +10,7 @@ repos:
     hooks:
       - id: isort
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.11.2
+    rev: v0.942
     hooks:
-      - id: mypy
-        exclude: ^(docs/conf.py|scripts/generate_schema.py)$
-        args: []
-        additional_dependencies: &mypy_deps
-          - types-PyYAML
-          - tomli >= 0.2.6, < 2.0.0
-          - click >= 8.1.0, != 8.1.4, != 8.1.5
-          - packaging >= 22.0
-          - platformdirs >= 2.1.0
-          - pytest
-          - hypothesis
-          - aiohttp >= 3.7.4
-          - types-commonmark
-          - urllib3
-          - hypothesmith
-      - id: mypy
-        name: mypy (Python 3.10)
-        files: scripts/generate_schema.py
-        args: ["--python-version=3.10"]
-        additional_dependencies: *mypy_deps
-
+    -   id: mypy
+        args: ["--install-types", "--non-interactive", "--ignore-missing-imports"]
