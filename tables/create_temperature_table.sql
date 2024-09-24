@@ -6,9 +6,9 @@ CREATE TABLE national_analysis.temperature (
     dbt_mean FLOAT,
     rh_max FLOAT,
     rh_min FLOAT,
-    rh_mean FLOAT
+    rh_mean FLOAT,
     PRIMARY KEY (station_id, date)
-)
+);
 -- Add comment to the table
 COMMENT ON TABLE national_analysis.temperature IS 'Table storing temperature and humidity data for weather stations, partitioned by date.';
 
