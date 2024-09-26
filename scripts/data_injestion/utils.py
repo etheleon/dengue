@@ -4,6 +4,7 @@ from contextlib import contextmanager
 import pandas as pd
 import psycopg2
 import toml
+from sqlalchemy import create_engine
 
 
 def read_excel_file(file_path, sheet_name="Sheet1"):
@@ -17,23 +18,23 @@ def load_db_config(config_file="secrets.toml"):
     return config["database"]
 
 
+# Context manager to establish a PostgreSQL connection
 @contextmanager
-def postgres_connection(config_file="secrets.toml"):
+def postgres_connection(config_file=".secrets.toml"):
     conn = None
     try:
         # Load the database configuration
         config = load_db_config(config_file)
 
-        # Establish the PostgreSQL connection using the config
-        conn = psycopg2.connect(
-            host=config["host"],
-            database=config["dbname"],
-            user=config["user"],
-            password=config["password"],
-            port=config.get("port", 5432),  # Use port 5432 if not specified
-        )
-        # Provide the connection to the block within 'with'
-        yield conn
+        # Create a connection string
+        connection_string = f"postgresql+psycopg2://{config['user']}:{config['password']}@{config['host']}:{config.get('port', 5432)}/{config['dbname']}"
+
+        # Create an SQLAlchemy engine
+        engine = create_engine(connection_string)
+
+        # Yield the engine for use within the `with` block
+        yield engine
+
     except Exception as e:
         print(f"An error occurred: {e}")
         if conn is not None:

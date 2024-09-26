@@ -3,14 +3,28 @@
 """Script to read weather data and populate temperature table.
 """
 import argparse
+import logging
 import os
 from glob import glob
 from typing import List
 
 import numpy as np
 import pandas as pd
+import utils
+from psycopg2.errors import UniqueViolation
+from pythonjsonlogger import jsonlogger
 
-from .utils import parse_date_with_filename
+# Set up the logger
+logger = logging.getLogger("db_logger")
+logger.setLevel(logging.INFO)
+
+# Create a stream handler that outputs logs to the console in JSON format
+handler = logging.StreamHandler()
+formatter = jsonlogger.JsonFormatter()
+handler.setFormatter(formatter)
+
+# Add the handler to the logger
+logger.addHandler(handler)
 
 
 def standardize(columns: List[str]) -> List[str]:
@@ -61,15 +75,19 @@ def read_dbt_rh_2022(data_root: str) -> pd.DataFrame:
         "wind_direction_max",
         "wind_speed_kts_max",
     ]
-
-    df = pd.read_csv(
-        os.path.join(data_root, "weather_2022", "Temp 2022.csv"),
-        skiprows=1,
-        names=snake_case_names,
-        encoding="ISO-8859-1",
-    ).loc[
-        :, :"dbt_min"  # type: ignore[misc]
-    ]
+    params = {
+        "skiprows": 1,
+        "names": snake_case_names,
+        "encoding": "ISO-8859-1",
+        "usecols": snake_case_names[:8],
+    }
+    df = pd.concat(
+        [
+            pd.read_csv(os.path.join(data_root, "weather_2022", "Temp 2022.csv"), **params),
+            pd.read_csv(os.path.join(data_root, "weather_2022", "Temp 202206.csv"), **params),
+        ],
+        ignore_index=True,
+    )
 
     expected_columns = ["rh_max", "rh_min", "rh_mean"]
 
@@ -108,41 +126,98 @@ def read_dbt_rh_2023_2024(data_dir: str, year: str) -> pd.DataFrame:
         "rh_mean",
     ]
 
-    csv_files = glob(os.path.join(data_dir, year, "Weekly DBT_RH*.csv"))
-    df_list = []
-
-    for file in csv_files:
+    def process_file(file):
         df = pd.read_csv(file)
         df.columns = standardize(df.columns.tolist())  # type: ignore
         df.rename(columns=column_mapping, inplace=True)
-        df_filtered = df[[col for col in standard_columns if col in df.columns]]
-        if "date" in df_filtered.columns:
-            df_filtered["date"] = df_filtered["date"].apply(
-                lambda x: parse_date_with_filename(x, file)  # pylint: disable=W0640
-            )
-        df_list.append(df_filtered)
 
-    df_final = pd.concat(df_list, ignore_index=True)
-    df_final["date"] = pd.to_datetime(df_final["date"], errors="coerce")
-    return df_final
+        # Filter columns
+        df_filtered = df[[col for col in standard_columns if col in df.columns]]
+
+        # Parse date if "date" column exists
+        if "date" in df_filtered.columns:
+            df_filtered.loc[:, "date"] = df_filtered["date"].apply(
+                lambda x: utils.parse_date_with_filename(x, file)  # pylint: disable=W0640
+            )
+
+        return df_filtered
+
+    # Process all files and concatenate the results into a single DataFrame
+    df = pd.concat(
+        [process_file(file) for file in glob(os.path.join(data_dir, year, "Weekly DBT_RH*.csv"))],
+        ignore_index=True,
+    )
+    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    return df
+
+
+def insert_data(df, table_name):
+    try:
+        with utils.postgres_connection() as engine:
+            try:
+                df.to_sql(
+                    table_name,
+                    engine,
+                    schema="national_analysis",
+                    if_exists="append",
+                    index=False,
+                )
+                logger.info(
+                    "Data inserted successfully",
+                    extra={
+                        "table_name": table_name,
+                        "row_count": len(df),
+                    },
+                )
+            except UniqueViolation as e:
+                logger.error(
+                    "Duplicate entry found while inserting into %s",
+                    extra={
+                        "table_name": table_name,
+                        "error": str(e),
+                    },
+                )
+            except Exception as e:
+                logger.error(
+                    "Failed to insert data",
+                    extra={
+                        "error": str(e),
+                        "table_name": table_name,
+                    },
+                )
+    except Exception as e:
+        logger.error(
+            "Failed to insert data",
+            extra={
+                "error": str(e),
+                "table_name": table_name,
+            },
+        )
 
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Process a CSV file and write it to PostgreSQL.")
     parser.add_argument(
-        "data_dir",
+        "--data_dir",
         type=str,
         help="Directory containing the data CSV file",
         default="/home/wesley/github/etheleon/national_analysis/data/climate/",
     )
     args = parser.parse_args()
 
-    pd.concat(
+    df = pd.concat(
         [
             read_dbt_rh_2009_2021(args.data_dir),
             read_dbt_rh_2022(args.data_dir),
             read_dbt_rh_2023_2024(args.data_dir, "weather_2023"),
             read_dbt_rh_2023_2024(args.data_dir, "weather_2024"),
-        ]
+        ],
+        ignore_index=True,
+    ).loc[:, ["date", "station_id", "dbt_max", "dbt_min", "dbt_mean"]]
+    logger.info(
+        "Removing null date entries",
+        extra={"nrows": len(df.query("date != date"))},
     )
+    df = df.query("date == date")
+    insert_data(df, "temperature")
