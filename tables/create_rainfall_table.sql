@@ -6,9 +6,9 @@ CREATE TABLE IF NOT EXISTS national_analysis.rainfall (
     PRIMARY KEY (station_id, date)
 );
 
-COMMENT ON TABLE national_analysis.rainfall_data IS 'This table stores the total rainfall and duration of rainfall for different stations on different dates.';
+COMMENT ON TABLE national_analysis.rainfall IS 'This table stores the total rainfall and duration of rainfall for different stations on different dates.';
 
-COMMENT ON COLUMN national_analysis.rainfall_data.station_id IS 'Unique identifier for each weather station.';
-COMMENT ON COLUMN national_analysis.rainfall_data.date IS 'Date of the recorded rainfall event.';
-COMMENT ON COLUMN national_analysis.rainfall_data.rainfall_amt_total IS 'Total rainfall amount measured in millimeters for the day.';
-COMMENT ON COLUMN national_analysis.rainfall_data.rainfall_duration_min IS 'Total rainfall duration in minutes for the day.';
+COMMENT ON COLUMN national_analysis.rainfall.station_id IS 'Unique identifier for each weather station.';
+COMMENT ON COLUMN national_analysis.rainfall.date IS 'Date of the recorded rainfall event.';
+COMMENT ON COLUMN national_analysis.rainfall.rainfall_amt_total IS 'Total rainfall amount measured in millimeters for the day.';
+COMMENT ON COLUMN national_analysis.rainfall.rainfall_duration_min IS 'Total rainfall duration in minutes for the day.';

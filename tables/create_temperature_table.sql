@@ -1,4 +1,4 @@
-CREATE TABLE national_analysis.temperature (
+CREATE TABLE IF NOT EXISTS national_analysis.temperature (
     station_id VARCHAR(50) NOT NULL,
     date TIMESTAMPTZ NOT NULL,
     dbt_max FLOAT,
