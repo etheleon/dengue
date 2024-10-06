@@ -66,6 +66,13 @@ parser$add_argument(
 )
 
 parser$add_argument(
+  "--horizon",
+  type = "integer",
+  default = 0,
+  help = "specify the time horizon"
+)
+
+parser$add_argument(
   "--csv_file_path",
   type = "character",
   default = "/workspace/dengue-singapore/data/dengue-cases-climate.csv",
@@ -79,7 +86,55 @@ args <- parser$parse_args()
 # Config
 model_root_dir <- "/workspace/dengue-singapore"
 
-source(file.path(model_root_dir, "R/create-lagged-data_fn.R"))
+lag_data <- function(data) {
+
+  df_model <- data |>
+    rename(max_t = maximum_temperature,
+           cases = dengue_cases
+           pop = total_population,
+	) |>
+    mutate(
+      max_t_scale = max_t - mean(max_t, na.rm = TRUE),
+      nino34 = nino34,
+      days_no_rain = days_no_rain,
+      time_since_switch = time_since_switch
+    )
+
+  # Generate running averages for max_t_scale, nino34, and totals for days_no_rain over 12 weeks
+  df_model <- df_model |>
+    bind_cols(setNames(lapply(df_model  |> dplyr::select(max_t_scale), rollmean, k = 12, fill = NA, align = "right"),
+                       c("max_t_scale_12_wk_avg_0"))) |>
+    bind_cols(setNames(lapply(df_model  |> dplyr::select(nino34), rollmean, k = 12, fill = NA, align = "right"),
+                       c("nino34_12_wk_avg_4"))) |>
+    bind_cols(setNames(lapply(df_model  |> dplyr::select(days_no_rain), rollsum, k = 12, fill = NA, align = "right"),
+                       c("days_no_rain_12_wk_total_0"))))
+
+  # Add lagged versions for max_t_scale, nino34, and days_no_rain
+  df_model <- df_model |>
+    bind_cols(setNames(shift(df_model$max_t_scale_12_wk_avg_0, seq(2, 8, by = 2)),
+                       c(paste0("max_t_scale_12_wk_avg_", seq(2, 8, by = 2))))) |>
+    bind_cols(setNames(shift(df_model$nino34_12_wk_avg_4, seq(2, 8, by = 2)),
+                       c(paste0("nino34_12_wk_avg_", seq(2, 8, by = 2))))) |>
+    bind_cols(setNames(shift(df_model$days_no_rain_12_wk_total_0, seq(2, 8, by = 2)),
+                       c(paste0("days_no_rain_12_wk_total_", seq(2, 8, by = 2)))))
+
+  # Add lagged version of time_since_switch
+  df_model <- df_model |>
+    bind_cols(setNames(shift(df_model$time_since_switch, seq(2, 8, by = 2)),
+                       c(paste0("time_since_switch_", seq(2, 8, by = 2)))))
+
+  # Keep the target variable (cases)
+  df_model <- df_model |> dplyr::select(c("date", "cases", "max_t_scale_12_wk_avg_0", starts_with("max_t_scale_12_wk_avg_"),
+                                          "nino34_12_wk_avg_4", starts_with("nino34_12_wk_avg_"),
+                                          "days_no_rain_12_wk_total_0", starts_with("days_no_rain_12_wk_total_"),
+                                          "time_since_switch", starts_with("time_since_switch_")))
+
+  return(df_model)
+}
+
+
+
+# source(file.path(model_root_dir, "R/create-lagged-data_fn.R"))
 source(file.path(model_root_dir, "R/fit-inla_fn.R"))
 source(file.path(model_root_dir, "R/tscv-prediction_fn.R"))
 source(file.path(model_root_dir, "R/utils_fn.R"))
@@ -108,7 +163,7 @@ if (args$model_type == 'sero_climate') {
 }
 flog.info(sprintf("Running predict using %s model.", args$model_type))
 
-c_args <- list(0, "all", "estimated") # To run all models for forecast horizon of 0 weeks
+c_args <- list(0, "sero_climate", "estimated") # To run all models for forecast horizon of 0 weeks
 df_eval <- df_model |>
   group_by(year, month) |>
   mutate(month_index = cur_group_id()) |>
@@ -158,7 +213,9 @@ year_month <- df_eval |>
 thresholds <- purrr::map2_df(year_month$month, year_month$year_index,
   possibly(calculate_thresholds),
   data_input = df_eval,
-  quantile = 0.75, .progress = TRUE
+  quantile = 0.75,
+  # TODO(Wesley): Consult CC for this
+  .progress = TRUE
 )
 
 df_eval <- df_eval |> left_join(thresholds, by = c("year_index", "month"))
@@ -175,8 +232,8 @@ df_eval <- df_eval |>
 
 flog.info("Eval Dataset Generated")
 
-horizon <- c_args[[1]]
-form_input <- c_args[[2]]
+horizon <- args$horizon
+form_input <- args$model_type
 yearly_re <- c_args[[3]]
 
 flog.info("Generating time series cross-validated predictions.")
