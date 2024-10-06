@@ -1,0 +1,79 @@
+slice_name: Release Magnitude and Dates
+description: null
+certified_by: null
+certification_details: null
+viz_type: echarts_timeseries_bar
+params:
+  datasource: 1__table
+  viz_type: echarts_timeseries_bar
+  x_axis: release_time
+  time_grain_sqla: P1D
+  xAxisForceCategorical: true
+  x_axis_sort_asc: true
+  x_axis_sort_series: name
+  x_axis_sort_series_ascending: true
+  metrics:
+  - expressionType: SIMPLE
+    column:
+      advanced_data_type: null
+      certification_details: null
+      certified_by: null
+      column_name: ndwellings
+      description: null
+      expression: null
+      filterable: true
+      groupby: true
+      id: null
+      is_certified: false
+      is_dttm: false
+      python_date_format: null
+      type: LONGINTEGER
+      type_generic: 0
+      verbose_name: null
+      warning_markdown: null
+    aggregate: SUM
+    sqlExpression: null
+    datasourceWarning: false
+    hasCustomLabel: false
+    label: SUM(ndwellings)
+    optionName: metric_26q5wmeembc_e05vcgjfjb5
+  groupby:
+  - premise_type
+  contributionMode: null
+  adhoc_filters: []
+  order_desc: true
+  row_limit: 100
+  truncate_metric: true
+  show_empty_columns: true
+  comparison_type: values
+  annotation_layers: []
+  forecastPeriods: 10
+  forecastInterval: 0.8
+  orientation: vertical
+  x_axis_title_margin: 15
+  y_axis_title_margin: 15
+  y_axis_title_position: Left
+  sort_series_type: sum
+  sort_series_ascending: false
+  color_scheme: supersetColors
+  show_value: false
+  only_total: true
+  show_legend: true
+  legendType: scroll
+  legendOrientation: top
+  x_axis_time_format: smart_date
+  y_axis_format: SMART_NUMBER
+  truncateXAxis: true
+  y_axis_bounds:
+  - null
+  - null
+  rich_tooltip: true
+  tooltipTimeFormat: smart_date
+  extra_form_data: {}
+  dashboards:
+  - 1
+query_context: '{"datasource":{"id":1,"type":"table"},"force":false,"queries":[{"filters":[],"extras":{"time_grain_sqla":"P1D","having":"","where":""},"applied_time_extras":{},"columns":[{"timeGrain":"P1D","columnType":"BASE_AXIS","sqlExpression":"release_time","label":"release_time","expressionType":"SQL"},"premise_type"],"metrics":[{"expressionType":"SIMPLE","column":{"advanced_data_type":null,"certification_details":null,"certified_by":null,"column_name":"ndwellings","description":null,"expression":null,"filterable":true,"groupby":true,"id":null,"is_certified":false,"is_dttm":false,"python_date_format":null,"type":"LONGINTEGER","type_generic":0,"verbose_name":null,"warning_markdown":null},"aggregate":"SUM","sqlExpression":null,"datasourceWarning":false,"hasCustomLabel":false,"label":"SUM(ndwellings)","optionName":"metric_26q5wmeembc_e05vcgjfjb5"}],"orderby":[[{"expressionType":"SIMPLE","column":{"advanced_data_type":null,"certification_details":null,"certified_by":null,"column_name":"ndwellings","description":null,"expression":null,"filterable":true,"groupby":true,"id":null,"is_certified":false,"is_dttm":false,"python_date_format":null,"type":"LONGINTEGER","type_generic":0,"verbose_name":null,"warning_markdown":null},"aggregate":"SUM","sqlExpression":null,"datasourceWarning":false,"hasCustomLabel":false,"label":"SUM(ndwellings)","optionName":"metric_26q5wmeembc_e05vcgjfjb5"},false]],"annotation_layers":[],"row_limit":100,"series_columns":["premise_type"],"series_limit":0,"order_desc":true,"url_params":{},"custom_params":{},"custom_form_data":{},"time_offsets":[],"post_processing":[{"operation":"pivot","options":{"index":["release_time"],"columns":["premise_type"],"aggregates":{"SUM(ndwellings)":{"operator":"mean"}},"drop_missing_columns":false}},{"operation":"rename","options":{"columns":{"SUM(ndwellings)":null},"level":0,"inplace":true}},{"operation":"flatten"}]}],"form_data":{"datasource":"1__table","viz_type":"echarts_timeseries_bar","x_axis":"release_time","time_grain_sqla":"P1D","xAxisForceCategorical":true,"x_axis_sort_asc":true,"x_axis_sort_series":"name","x_axis_sort_series_ascending":true,"metrics":[{"expressionType":"SIMPLE","column":{"advanced_data_type":null,"certification_details":null,"certified_by":null,"column_name":"ndwellings","description":null,"expression":null,"filterable":true,"groupby":true,"id":null,"is_certified":false,"is_dttm":false,"python_date_format":null,"type":"LONGINTEGER","type_generic":0,"verbose_name":null,"warning_markdown":null},"aggregate":"SUM","sqlExpression":null,"datasourceWarning":false,"hasCustomLabel":false,"label":"SUM(ndwellings)","optionName":"metric_26q5wmeembc_e05vcgjfjb5"}],"groupby":["premise_type"],"contributionMode":null,"adhoc_filters":[],"order_desc":true,"row_limit":100,"truncate_metric":true,"show_empty_columns":true,"comparison_type":"values","annotation_layers":[],"forecastPeriods":10,"forecastInterval":0.8,"orientation":"vertical","x_axis_title_margin":15,"y_axis_title_margin":15,"y_axis_title_position":"Left","sort_series_type":"sum","sort_series_ascending":false,"color_scheme":"supersetColors","show_value":false,"only_total":true,"show_legend":true,"legendType":"scroll","legendOrientation":"top","x_axis_time_format":"smart_date","y_axis_format":"SMART_NUMBER","truncateXAxis":true,"y_axis_bounds":[null,null],"rich_tooltip":true,"tooltipTimeFormat":"smart_date","extra_form_data":{},"dashboards":[1],"force":false,"result_format":"json","result_type":"full"},"result_format":"json","result_type":"full"}'
+cache_timeout: null
+uuid: b2ceb754-8a8e-422a-9cd6-7a3bd668b8db
+version: 1.0.0
+dataset_uuid: a91ebc78-af46-464c-a013-7d004596f89e
