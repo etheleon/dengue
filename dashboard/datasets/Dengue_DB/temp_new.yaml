@@ -1,0 +1,57 @@
+table_name: temp new
+main_dttm_col: date
+description: null
+default_endpoint: null
+offset: 0
+cache_timeout: null
+schema: national_analysis
+sql: "with raw AS (\nSELECT \n date\n, dbt_mean FROM national_analysis.temperature\
+  \ \nwhere date >= timestamp '2020-01-01'\n)\n-- select times, sum(dbt_mean) from\
+  \ (\n-- select times, avg(dbt_mean) FROM (\nSELECT date, AVG(dbt_mean) FROM (\n\
+  select * from raw where dbt_mean IS NOT NULL\n  AND dbt_mean != 'NaN'::float\n \
+  \ ) group by 1"
+params: null
+template_params: null
+filter_select_enabled: true
+fetch_values_predicate: null
+extra: null
+normalize_columns: false
+always_filter_main_dttm: false
+uuid: a26a30b1-4599-4f61-ab4c-dc7d31604b2c
+metrics:
+- metric_name: count
+  verbose_name: COUNT(*)
+  metric_type: count
+  expression: COUNT(*)
+  description: null
+  d3format: null
+  currency: null
+  extra: null
+  warning_text: null
+columns:
+- column_name: date
+  verbose_name: null
+  is_dttm: true
+  is_active: true
+  type: DATETIMETZ
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra: null
+- column_name: avg
+  verbose_name: null
+  is_dttm: false
+  is_active: true
+  type: FLOAT
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra: null
+version: 1.0.0
+database_uuid: 42417197-86bb-4eca-b111-d1d60a0a0ba3

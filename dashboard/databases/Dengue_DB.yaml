@@ -1,0 +1,13 @@
+database_name: Dengue DB
+sqlalchemy_uri: postgresql+psycopg2://postgres:XXXXXXXXXX@172.16.3.208:5432/dengue
+cache_timeout: null
+expose_in_sqllab: true
+allow_run_async: false
+allow_ctas: false
+allow_cvas: false
+allow_dml: false
+allow_file_upload: false
+extra:
+  allows_virtual_table_explore: true
+uuid: 42417197-86bb-4eca-b111-d1d60a0a0ba3
+version: 1.0.0
