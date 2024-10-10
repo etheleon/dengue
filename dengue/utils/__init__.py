@@ -1,6 +1,7 @@
-"""Utils for running ingestion."""
+"""Utils."""
 
 import logging
+import os
 import re
 from contextlib import contextmanager
 from logging import Logger
@@ -36,19 +37,6 @@ def read_excel_file(file_path, sheet_name="Sheet1"):
     return df
 
 
-def load_db_config(config_file="secrets.toml"):
-    """Load the database configuration from a TOML file.
-
-    Args:
-        config_file (str): The path to the TOML configuration file. Defaults to "secrets.toml".
-
-    Returns:
-        dict: A dictionary containing the database configuration.
-    """
-    config = toml.load(config_file)
-    return config["database"]
-
-
 @contextmanager
 def postgres_connection(config_file=".secrets.toml"):
     """Establish a connection to a PostgreSQL database using the provided configuration file.
@@ -67,7 +55,7 @@ def postgres_connection(config_file=".secrets.toml"):
     """
     conn = None
     try:
-        cfg = load_db_config(config_file)
+        cfg = read_config(config_file if config_file else None)
         connection_string = "postgresql+psycopg2://{}:{}@{}:5432/{}".format(
             cfg["user"],
             cfg["passwd"],
@@ -271,3 +259,77 @@ def spawn_logger(name: str, level=logging.INFO):
         logger.addHandler(handler)
 
     return logger
+
+
+def download_dataframe_from_db(query: str) -> pd.DataFrame:
+    """Downloads data from a database based on the provided SQL query and returns it as a pandas DataFrame.
+
+    Args:
+        query (str): The SQL query to execute for retrieving the data.
+        connection_params_path (str): The path to the file containing the database connection parameters.
+
+    Returns:
+        pd.DataFrame: The data retrieved from the database as a pandas DataFrame.
+
+    Raises:
+        Exception: If an error occurs during the data retrieval process.
+    """
+    try:
+        with postgres_connection() as engine:
+            try:
+                df = pd.read_sql(query, engine)
+                logger.info(
+                    "Data retrieved successfully",
+                    extra={
+                        "query": query,
+                        "row_count": len(df),
+                    },
+                )
+                return df
+            except Exception as e:
+                logger.error(
+                    "Failed to retrieve data",
+                    extra={
+                        "query": query,
+                        "error": str(e),
+                    },
+                )
+                raise e
+    except Exception as e:
+        logger.error(
+            "Failed to establish database connection",
+            extra={"error": str(e)},
+        )
+        raise e
+
+
+def read_config(config_file=".secrets.toml"):
+    """Reads the database configuration from a TOML file or environment variables.
+
+    Args:
+        config_file (str): The path to the configuration file. Defaults to ".secrets.toml".
+
+    Returns:
+        dict: A dictionary containing the database connection parameters.
+
+    Raises:
+        Exception: If neither a valid configuration file nor environment variables are found.
+    """
+    # If config_file is provided, try to read from it
+    if config_file and os.path.exists(config_file):
+        try:
+            config = toml.load(config_file)
+            return config["database"]
+        except Exception as e:
+            raise Exception(f"Error reading config file {config_file}: {e}")
+
+    # If no config file is provided, fall back to environment variables
+    try:
+        return {
+            "user": os.getenv("DB_USER"),
+            "passwd": os.getenv("DB_PASSWORD"),
+            "host": os.getenv("DB_HOST"),
+            "dbname": os.getenv("DB_NAME"),
+        }
+    except Exception as e:
+        raise Exception(f"Error reading configuration from environment variables: {e}")
