@@ -5,7 +5,7 @@ import pandas as pd
 from utils import download_dataframe_from_db
 
 
-def get_time_since_switch() -> pd.DataFrame:
+def get_time_since_switch(schema="national_analysis", table="dengue_agg") -> pd.DataFrame:
     """Computes the number of days since the last switch in the dominant dengue strain.
 
     This function queries a database to retrieve dengue serotype data, processes it to determine
@@ -17,12 +17,12 @@ def get_time_since_switch() -> pd.DataFrame:
             - 'date': The date of the observation.
             - 'dominant_strain_n_days': The number of days since the last switch in the dominant strain.
     """
-    query = """--sql
+    query = f"""--sql
     WITH ranked_serotype AS (
       SELECT date,
         CAST(REPLACE(serotype_strain, 'D', '') AS INT) AS serotype_strain_int,
         RANK() OVER (partition by date order by serotype_count DESC) as rn
-      FROM national_analysis.dengue_agg 
+      FROM {schema}.{table}
     ),
     dom_strain_unaltered AS (
         SELECT
