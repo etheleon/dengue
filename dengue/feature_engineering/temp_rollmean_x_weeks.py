@@ -5,7 +5,7 @@ import pandas as pd
 from utils import download_dataframe_from_db
 
 
-def get_time_since_switch(schema="national_analysis", table="temperature", window=12) -> pd.DataFrame:
+def get_mean_centered_avg_daily_temp(schema="national_analysis", table="temperature", window=12) -> pd.DataFrame:
     """Calculate rolling mean of mean-centered max daily temperature over specified window.
 
     This function queries a database to retrieve temperature data, calculates the mean-centered maximum temperature,
