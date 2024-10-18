@@ -2,7 +2,8 @@
 """Module to calculate time since switch event feature for INLA model."""
 
 import pandas as pd
-from utils import download_dataframe_from_db
+
+from dengue.utils import download_dataframe_from_db
 
 
 def get_time_since_switch(schema="national_analysis", table="dengue_agg") -> pd.DataFrame:
@@ -41,9 +42,11 @@ def get_time_since_switch(schema="national_analysis", table="dengue_agg") -> pd.
         )
     )
     SELECT
-        date,
-        dominant_strain_curr_week,
-        dominant_strain_prev_week,
+        -- date,
+		EXTRACT(YEAR from date) AS year,
+		EXTRACT(WEEK from date) AS week,
+        -- dominant_strain_curr_week,
+        -- dominant_strain_prev_week,
         CASE
           -- Case 1: Current week strain has clear dominant strain
           WHEN curr_len = 1 THEN dominant_strain_curr_week
@@ -81,5 +84,10 @@ def get_time_since_switch(schema="national_analysis", table="dengue_agg") -> pd.
             counter = 0
         time_since_switch.append(counter)
         counter += 7  # days
-    df["dominant_strain_n_days"] = pd.Series(time_since_switch)
-    return df[["date", "dominant_strain_n_days"]]
+    df["days_since_switch"] = pd.Series(time_since_switch)
+    df.year = df.year.astype(int)
+    df.week = df.week.astype(int)
+    df.days_since_switch = df.days_since_switch.fillna(0)
+    df.days_since_switch = df.days_since_switch.astype(int)
+    df = df.set_index(["year", "week"])
+    return df[["days_since_switch"]]

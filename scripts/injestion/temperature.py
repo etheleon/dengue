@@ -150,7 +150,7 @@ if __name__ == "__main__":
         help="secrets file",
     )
     parser.add_argument(
-        "--ddl_root",
+        "--table-ddl",
         type=str,
         default="./tables/create_temperature_table.sql",
         help="dir for keeping DDL",

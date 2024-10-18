@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 """Script to update the Nino 3.4 index data in the database."""
-from functools import partial
 
 import pandas as pd
-from utils import upsert_dataframe_to_db
+
+from dengue.utils import upsert_dataframe_to_db
 
 URL = "https://www.cpc.ncep.noaa.gov/data/indices/wksst9120.for"
 
@@ -33,7 +33,7 @@ def retrieve_nino34_data(url: str) -> pd.DataFrame:
     """
     columns = ["date", "nino12", "nino3", "nino34", "nino4"]
     df = pd.read_csv(url, skiprows=4, names=columns, sep=r"\s{5}", engine="python")
-    df["date"] = pd.to_datetime(df["date"], format="%d%b%Y").dt.strftime("%Y-%m-%d")
+    df["date"] = pd.to_datetime(df["date"], format="%d%b%Y")
     df[["sst", "ssta"]] = df["nino34"].str.extract(r"([0-9.]+)\s*([+-]?[0-9.]+)")
     df["sst"] = df["sst"].astype(float)
     df["ssta"] = df["ssta"].astype(float)
