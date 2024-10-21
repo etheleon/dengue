@@ -111,3 +111,74 @@ def get_elnino34_ssta_weekly(schema="national_analysis", table="elnino34", windo
     df.eweek = df.eweek.astype(int)
     df = df.set_index(["year", "eweek"])
     return df
+
+
+def get_days_no_rain(schema="national_analysis", table="rainfall", window=12, lag=0) -> pd.DataFrame:
+    """Calculate the number of days with no rain over a specified rolling window and lag.
+
+    This function generates a SQL query to calculate the number of days with no rain
+    over a specified rolling window and lag, executes the query, and returns the result
+    as a pandas DataFrame.
+
+    Args:
+        schema (str): The database schema where the table is located. Default is "national_analysis".
+        table (str): The name of the table rainfall data. Default is "rainfall".
+        window (int): The size of the moving average window in weeks. Must be a positive integer. Default is 12.
+        lag (int): The number of weeks to lag the rolling sum of no rain days. Default is 0.
+
+    Returns:
+        pd.DataFrame: A DataFrame indexed by year and epidemiological week (eweek),
+        containing the total number of days with no rain over the specified rolling window and lag.
+
+    Raises:
+        ValueError: If the window parameter is less than 1.
+    """
+    if window < 1:
+        raise ValueError("Window must be a positive integer")
+
+    query = f"""--sql
+      WITH natl_rainfall AS (
+        SELECT
+          date,
+          to_char(date, 'IW')::int AS eweek,
+          to_char(date, 'IYYY')::int AS year,
+          SUM(rainfall_amt_total) as rainfall_tot
+        FROM {schema}.{table}
+        GROUP BY 1
+      ),
+      num_days_no_rain_weekly AS (
+        SELECT
+          year,
+          eweek,
+          SUM(CASE
+          WHEN rainfall_tot = 0 OR rainfall_tot IS NULL THEN 1
+          ELSE 0
+          END) days_no_rain
+        FROM natl_rainfall
+        GROUP BY 1, 2
+      ),
+      rolling_sum AS (
+        SELECT
+          year,
+          eweek,
+          days_no_rain,
+          SUM(days_no_rain) OVER (
+            PARTITION BY year ORDER BY eweek ROWS {window - 1} PRECEDING
+          ) AS days_no_rain_12_wk_total
+        FROM num_days_no_rain_weekly
+      )
+      SELECT
+        year,
+        eweek,
+        -- days_no_rain_12_wk_total,
+        LAG(days_no_rain_{window}_wk_total, {lag}, 0) OVER (
+            ORDER BY year, eweek
+        ) AS days_no_rain_{window}_wk_total_{lag}
+      FROM rolling_sum
+    """
+    df = download_dataframe_from_db(query)
+    df.year = df.year.astype(int)
+    df.eweek = df.eweek.astype(int)
+    df[f"days_no_rain_{window}_wk_total_{lag}"] = df[f"days_no_rain_{window}_wk_total_{lag}"].astype(int)
+    df = df.set_index(["year", "eweek"])
+    return df
