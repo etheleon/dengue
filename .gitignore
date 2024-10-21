@@ -169,3 +169,4 @@ cython_debug/
 .virtual_documents
 *.csv.bak
 *.rds
+poetry.lock
