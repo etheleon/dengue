@@ -1,12 +1,16 @@
 #!/usr/bin/env python
 """Module to calculate time since switch event feature for INLA model."""
 
+from datetime import datetime
+
 import pandas as pd
 
 from dengue.utils import download_dataframe_from_db
 
 
-def get_time_since_switch(schema="national_analysis", table="dengue_agg") -> pd.DataFrame:
+def get_time_since_switch(
+    start_date: datetime, end_date: datetime, schema="national_analysis", table="dengue_agg"
+) -> pd.DataFrame:
     """Computes the number of days since the last switch in the dominant dengue strain.
 
     This function queries a database to retrieve dengue serotype data, processes it to determine
@@ -18,12 +22,16 @@ def get_time_since_switch(schema="national_analysis", table="dengue_agg") -> pd.
             - 'date': The date of the observation.
             - 'dominant_strain_n_days': The number of days since the last switch in the dominant strain.
     """
+    start_time_s = start_date.strftime("%Y-%m-%d")
+    end_time_s = end_date.strftime("%Y-%m-%d")
+
     query = f"""--sql
     WITH ranked_serotype AS (
       SELECT date,
         CAST(REPLACE(serotype_strain, 'D', '') AS INT) AS serotype_strain_int,
         RANK() OVER (partition by date order by serotype_count DESC) as rn
       FROM {schema}.{table}
+      WHERE date >= timestamp '{start_time_s}' AND date < timestamp '{end_time_s}'
     ),
     dom_strain_unaltered AS (
         SELECT
@@ -87,7 +95,6 @@ def get_time_since_switch(schema="national_analysis", table="dengue_agg") -> pd.
     df["days_since_switch"] = pd.Series(time_since_switch)
     df.year = df.year.astype(int)
     df.week = df.week.astype(int)
-    df.days_since_switch = df.days_since_switch.fillna(0)
     df.days_since_switch = df.days_since_switch.astype(int)
     df = df.set_index(["year", "week"])
     return df[["days_since_switch"]]

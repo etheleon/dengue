@@ -1,11 +1,15 @@
 """Module to calculate climate related ML Features."""
 
+from datetime import datetime
+
 import pandas as pd
 
 from dengue.utils import download_dataframe_from_db
 
 
-def get_temp_weekly(schema="national_analysis", table="temperature", window=12, lag=0) -> pd.DataFrame:
+def get_temp_weekly(
+    start_date: datetime, end_date: datetime, schema="national_analysis", table="temperature", window=12, lag=0
+) -> pd.DataFrame:
     """Calculate rolling mean of mean-centered max weekly temperature over specified window.
 
     This function queries a database to retrieve daily temperature data, calculates the
@@ -24,6 +28,9 @@ def get_temp_weekly(schema="national_analysis", table="temperature", window=12, 
     if window < 1:
         raise ValueError("Window must be a positive integer")
 
+    start_time_s = start_date.strftime("%Y-%m-%d")
+    end_time_s = end_date.strftime("%Y-%m-%d")
+
     query = f"""--sql
       WITH natl_avg AS (
         SELECT
@@ -37,6 +44,7 @@ def get_temp_weekly(schema="national_analysis", table="temperature", window=12, 
               to_char(date, 'IW') AS eweek,
               dbt_max
           FROM {schema}.{table}
+          WHERE date >= timestamp '{start_time_s}' AND date < timestamp '{end_time_s}'
         )
         GROUP BY 1, 2
       ),
@@ -71,7 +79,9 @@ def get_temp_weekly(schema="national_analysis", table="temperature", window=12, 
     return df
 
 
-def get_elnino34_ssta_weekly(schema="national_analysis", table="elnino34", window=12, lag=4) -> pd.DataFrame:
+def get_elnino34_ssta_weekly(
+    start_date: datetime, end_date: datetime, schema="national_analysis", table="elnino34", window=12, lag=4
+) -> pd.DataFrame:
     """Retrieves the weekly averaged Sea Surface Temperature Anomalies (SSTA) for the El Niño 3.4 region with lag.
 
     Retrieves raw data from specified database table, applying a moving average window and a lag.
@@ -91,6 +101,9 @@ def get_elnino34_ssta_weekly(schema="national_analysis", table="elnino34", windo
     if window < 1:
         raise ValueError("Window must be a positive integer")
 
+    start_time_s = start_date.strftime("%Y-%m-%d")
+    end_time_s = end_date.strftime("%Y-%m-%d")
+
     query = f"""--sql
       WITH averaged AS (
         SELECT
@@ -98,6 +111,7 @@ def get_elnino34_ssta_weekly(schema="national_analysis", table="elnino34", windo
           to_char(date, 'IW') AS eweek,
           AVG(ssta) OVER (ORDER BY date ROWS BETWEEN {window - 1} PRECEDING AND CURRENT ROW) AS nino34_{window}_wk_avg
         FROM {schema}.{table}
+        WHERE date >= timestamp '{start_time_s}' AND date < timestamp '{end_time_s}'
       )
       SELECT
         year,
@@ -113,7 +127,9 @@ def get_elnino34_ssta_weekly(schema="national_analysis", table="elnino34", windo
     return df
 
 
-def get_days_no_rain(schema="national_analysis", table="rainfall", window=12, lag=0) -> pd.DataFrame:
+def get_days_no_rain(
+    start_date: datetime, end_date: datetime, schema="national_analysis", table="rainfall", window=12, lag=0
+) -> pd.DataFrame:
     """Calculate the number of days with no rain over a specified rolling window and lag.
 
     This function generates a SQL query to calculate the number of days with no rain
@@ -136,6 +152,9 @@ def get_days_no_rain(schema="national_analysis", table="rainfall", window=12, la
     if window < 1:
         raise ValueError("Window must be a positive integer")
 
+    start_time_s = start_date.strftime("%Y-%m-%d")
+    end_time_s = end_date.strftime("%Y-%m-%d")
+
     query = f"""--sql
       WITH natl_rainfall AS (
         SELECT
@@ -144,6 +163,7 @@ def get_days_no_rain(schema="national_analysis", table="rainfall", window=12, la
           to_char(date, 'IYYY')::int AS year,
           SUM(rainfall_amt_total) as rainfall_tot
         FROM {schema}.{table}
+        WHERE date >= timestamp '{start_time_s}' AND date < timestamp '{end_time_s}'
         GROUP BY 1
       ),
       num_days_no_rain_weekly AS (

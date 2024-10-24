@@ -1,0 +1,39 @@
+train:
+  start_time: 2020-01-01
+  end_time: 2022-12-31
+test:
+  start_time: 2023-01-01
+  end_time: 2023-12-31
+dataset: national_analysis.inla_model
+horizon: 0
+model:
+  horizon: 0
+  hyperparameters: 
+    - prec:
+        prior: 'pc.prec'
+        param: [0.5, 0.01]
+features:
+  - name: time_since_switch
+    variable_type: group
+    bins: 18
+    model: 'rw2'
+    scale_model: true
+  - name: max_t_scale_12_wk_avg_0
+    variable_type: group
+    model: 'rw2'
+    scale_model: true
+  - name: nino34_12_wk_avg_4
+    variable_type: group
+    bins: 12
+    model: 'rw2'
+    scale_model: true
+  - name: days_no_rain_12_wk_total_0
+    variable_type: group
+    model: 'rw2'
+    scale_model: true
+random_effects:
+  - name: year_index
+    model: 'iid'
+  - name: eweek
+    model: 'rw2'
+    cyclic: true

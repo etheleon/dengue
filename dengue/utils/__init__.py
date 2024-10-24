@@ -5,7 +5,7 @@ import os
 import re
 from contextlib import contextmanager
 from logging import Logger
-from typing import List
+from typing import List, Optional
 
 import pandas as pd
 import psycopg2
@@ -152,7 +152,7 @@ def clean_headers(df: pd.DataFrame) -> pd.DataFrame:
     return df.reset_index(drop=True)
 
 
-def insert_data(df, table_name, logger: Logger):
+def insert_data(df: pd.DataFrame, table_name: str, logger: Logger, schema: str = "national_analysis"):
     """Helper function to add table."""
     try:
         with postgres_connection() as engine:
@@ -160,7 +160,7 @@ def insert_data(df, table_name, logger: Logger):
                 df.to_sql(
                     table_name,
                     engine,
-                    schema="national_analysis",
+                    schema=schema,
                     if_exists="append",
                     index=False,
                 )
@@ -197,7 +197,13 @@ def insert_data(df, table_name, logger: Logger):
         )
 
 
-def upsert_dataframe_to_db(df: pd.DataFrame, ddl_file: str, table_name: str, connection_params_path: str):
+def upsert_dataframe_to_db(
+    df: pd.DataFrame,
+    ddl_file: Optional[str],
+    table_name: str,
+    connection_params_path: Optional[str],
+    schema="national_analysis",
+):
     """Upserts a DataFrame into a database table.
 
     This function reads a DDL file to create or update a database table, and then
@@ -215,24 +221,28 @@ def upsert_dataframe_to_db(df: pd.DataFrame, ddl_file: str, table_name: str, con
     Raises:
     Exception: If an error occurs while executing the SQL statements.
     """
-    with open(ddl_file, "r", encoding="UTF-8") as ddl:
-        create_table_query = ddl.read()
+    if ddl_file is None:
+        logger.info("Inferring schema from DataFrame")
+    else:
+        with open(ddl_file, "r", encoding="UTF-8") as ddl:
+            create_table_query = ddl.read()
 
-    sql_statements = create_table_query.split(";")
+        sql_statements = create_table_query.split(";")
+        if connection_params_path is None:
+            connection_params_path = read_config()
+        with postgres_connection(connection_params_path) as engine:
+            with engine.begin() as connection:
+                try:
+                    # Execute each SQL statement individually
+                    for statement in sql_statements:
+                        statement = statement.strip()  # Remove leading/trailing whitespace
+                        if statement:  # Skip empty statements
+                            connection.execute(text(statement))
+                except Exception as e:
+                    print(f"An error occurred while executing SQL: {e}")
 
-    with postgres_connection(connection_params_path) as engine:
-        with engine.begin() as connection:
-            try:
-                # Execute each SQL statement individually
-                for statement in sql_statements:
-                    statement = statement.strip()  # Remove leading/trailing whitespace
-                    if statement:  # Skip empty statements
-                        connection.execute(text(statement))
-            except Exception as e:
-                print(f"An error occurred while executing SQL: {e}")
-
-    # # Insert data into the table
-    insert_data(df, table_name, logger)
+    # Insert data into the table
+    insert_data(df, table_name, logger, schema=schema)
 
 
 def spawn_logger(name: str, level=logging.INFO):
