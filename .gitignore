@@ -170,3 +170,5 @@ cython_debug/
 *.csv.bak
 *.rds
 poetry.lock
+.RData
+.Rhistory
