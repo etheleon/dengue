@@ -1,14 +1,10 @@
 #!/usr/bin/env Rscript
 
-# Accept positional and kw args
 suppressPackageStartupMessages(library(argparse))
 suppressPackageStartupMessages(library(yaml))
 
-# Data manipulation and wrangling
 suppressPackageStartupMessages(library(tidyverse))
-suppressPackageStartupMessages(library(janitor))
-
-# Date and time manipulation
+# suppressPackageStartupMessages(library(janitor))
 suppressPackageStartupMessages(library(lubridate))
 
 # Spatial modeling and Bayesian inference
@@ -19,22 +15,18 @@ suppressPackageStartupMessages(library(nnet))
 suppressPackageStartupMessages(library(splines))
 
 # Utilities and fonts
-suppressPackageStartupMessages(library(stringr))
-suppressPackageStartupMessages(library(showtext))
-suppressPackageStartupMessages(library(sysfonts))
-suppressPackageStartupMessages(library(purrr))
-suppressPackageStartupMessages(library(scoringutils))
-suppressPackageStartupMessages(library(pROC))
+# suppressPackageStartupMessages(library(stringr))
+# suppressPackageStartupMessages(library(showtext))
+# suppressPackageStartupMessages(library(sysfonts))
+# suppressPackageStartupMessages(library(scoringutils))
+# suppressPackageStartupMessages(library(pROC))
 
 # Time series and data transformation
-suppressPackageStartupMessages(library(zoo))
-suppressPackageStartupMessages(library(tidyquant))
+# suppressPackageStartupMessages(library(zoo))
+# suppressPackageStartupMessages(library(tidyquant))
 
 # Hydrological goodness of fit
-suppressPackageStartupMessages(library(hydroGOF))
-
-suppressPackageStartupMessages(library(futile.logger))
-
+# suppressPackageStartupMessages(library(hydroGOF))
 
 #' Parse model parameters from YAML Configuration
 #'
@@ -85,11 +77,14 @@ suppressPackageStartupMessages(library(futile.logger))
 #' @export
 parse_config <- function(yaml_file, response = "cases") {
   yaml_data <- yaml.load_file(yaml_file)
-  
+  input_s <- yaml_data$input_file
   features <- yaml_data$features
   random_effects <- yaml_data$random_effects
   hyperparams <- yaml_data$model$hyperparameters
-  
+  train_start_time <- yaml_data$train$start_time
+  train_end_time <- yaml_data$train$end_time
+  test_start_time <- yaml_data$test$start_time
+  test_end_time <- yaml_data$test$end_time
   formula_str <- ""
   
   # Loop through each feature to build the formula
@@ -142,42 +137,94 @@ parse_config <- function(yaml_file, response = "cases") {
   print(full_formula_str)
   full_formula <- as.formula(full_formula_str)
   
-  return(list(
+  list(
     formula = full_formula,
-    hyperparameters = hyperparameters
-  ))
+    hyperparameters = hyperparameters,
+	input_s = input_s,
+	train_start_time = train_start_time,
+	train_end_time = train_end_time,
+	test_start_time = test_start_time,
+	test_end_time = test_end_time,
+  )
 }
 
+train_pred_split <- function(
+	csv_file_path = /workplace/da, 
+	train_start, 
+	train_end, 
+	pred_start, 
+	pred_end,
+	horizon = 0
+	) {
+	df = read_csv(csv_file_path)
+	train_df |> filter(date >= train_start, date < train_end)
+	pred_df |> filter(date >= pred_start, date < pred_end)
+	list(
+		train_df = train_df
+		pred_df = pred_df
+	)
+}
 
-read_data <- function(csv_file_path) {
+# make this an object
+train <- function(df, formula){
+	model <- inla(formula,
+        family = "nbinomial",
+        offset = log(pop / 100000),
+        control.inla = list(strategy = "adaptive"),
+        control.predictor = list(link = 1, compute = TRUE),
+        control.compute = list(return.marginals.predictor = TRUE, dic = TRUE, waic = TRUE, cpo = TRUE, config = TRUE), # which model assessment criteria to include
+        control.fixed = list(correlation.matrix = TRUE, prec.intercept = 1, prec = 1),
+        num.threads = 4,
+        verbose = FALSE,
+        data = df
+    )
+	model
+}
 
+#' @param nsamples N(samples) to extract from model posterior
+predict <- function(model, nsamples){
+	xx <- inla.posterior.sample(nsamples, mod)
+	xx_s <- inla.posterior.sample.eval(
+		function(...) {
+			c(
+			theta[1], # This is the size parameter of the negative binomial distribution (overdispersion)
+			Predictor
+			)
+		},
+		xx
+	)
+	xx_s <- xx_s[c(1, n + 1), ] 
+	y_pred <- matrix(NA, 1, nsamples)
+	for (i in 1:nsamples) {
+		xx_sample <- xx_s[, i]
+		y_pred[, i] <- rnbinom(1, mu = exp(xx_sample[-1]), size = xx_sample[1])
+		if (is.na(y_pred[, i])) {
+			print(paste0("NA prediction generated with mu = ", exp(xx_sample[-1]), " and size = ", xx_sample[1]))
+		}
+	}
 }
 
 parser <- ArgumentParser()
-
 parser$add_argument(
   "--config", 
   type = "character",
-  default = "workspace/dengue-singapore/model_config.yaml",
-  help = "Specify the path to the model config file"
+  default = "/workspace/config.yaml",
+  help = "Specify path to config.yaml"
 )
-
 args <- parser$parse_args()
-
-# Config
-model_root_dir <- "/workspace/dengue-singapore"
 config <- parse_config(args$config)
 
 datasets = train_pred_split(
-  args$csv_file_path, 
+  csv_file_path = config$input_file, 
   train_start = config$train_start_time, 
   train_end = config$train_end_time,
   pred_start = config$pred_start_time,
   pred_end = config$pred_end_time
 )
-datasets$train_df
 
-datasets$pred_df
+model = INLA_model(config)
+model.train(datasets$train_df)
+model.predict(datasets$pred_df)
 
 # dengue_singapore <- read_csv() %>%
 #   mutate(date = as.Date(date, format = "%d/%m/%Y"))
@@ -214,32 +261,8 @@ datasets$pred_df
 #   group_by(year_index, month) |>
 #   filter(year_index >= 10) |>
 #   summarise(.groups = "keep")
-# thresholds <- purrr::map2_df(year_month$month, year_month$year_index,
-#   possibly(calculate_thresholds),
-#   data_input = df_eval,
-#   quantile = 0.75,
-#   # TODO(Wesley): Consult CC for this
-#   .progress = TRUE
-# )
 # 
 # df_eval <- df_eval |> left_join(thresholds, by = c("year_index", "month"))
-# 
-# # Here we define an outbreak week where the number of cases is > seasonal moving 75th percentile
-# # threshold, and an outbreak year as having more than 8 outbreak weeks
-# df_eval <- df_eval |>
-#   mutate(outbreak_week = case_when(cases > threshold ~ 1, TRUE ~ 0)) |>
-#   group_by(year) |>
-#   mutate(outbreak_year = case_when(sum(outbreak_week) > 12 ~ 1, TRUE ~ 0)) |>
-#   # Add outbreak years pre 2010
-#   mutate(outbreak_year = case_when(year == 2004 | year == 2005 | year == 2007 ~ 1, TRUE ~ outbreak_year)) |>
-#   ungroup()
-# 
-# flog.info("Eval Dataset Generated")
-# 
-# form_input <- args$model_type
-# yearly_re <- c_args[[3]]
-# 
-# flog.info("Generating time series cross-validated predictions.")
 # 
 # # Run TSCV predictions ---------------------------------------------------------------------
 # 

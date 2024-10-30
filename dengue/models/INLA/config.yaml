@@ -1,3 +1,4 @@
+input_file: data.csv.gz
 train:
   start_time: 2020-01-01
   end_time: 2022-12-31
