@@ -21,6 +21,7 @@ features:
     scale_model: true
   - name: max_t_scale_12_wk_avg_0
     variable_type: group
+    bins: 25
     model: 'rw2'
     scale_model: true
   - name: nino34_12_wk_avg_4
@@ -30,11 +31,13 @@ features:
     scale_model: true
   - name: days_no_rain_12_wk_total_0
     variable_type: group
+    bins: 25
     model: 'rw2'
     scale_model: true
 random_effects:
   - name: year_index
     model: 'iid'
+    cyclic: 'FALSE'
   - name: eweek
     model: 'rw2'
-    cyclic: true
+    cyclic: 'TRUE'

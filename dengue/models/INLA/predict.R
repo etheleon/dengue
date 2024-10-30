@@ -2,33 +2,15 @@
 
 suppressPackageStartupMessages(library(argparse))
 suppressPackageStartupMessages(library(yaml))
-
-suppressPackageStartupMessages(library(tidyverse))
-# suppressPackageStartupMessages(library(janitor))
-suppressPackageStartupMessages(library(lubridate))
 suppressPackageStartupMessages(library(glue))
+suppressPackageStartupMessages(library(tidyr))
+suppressPackageStartupMessages(library(stringr))
 
 
 # Spatial modeling and Bayesian inference
 suppressPackageStartupMessages(library(INLA))
 
 # Machine learning and statistical modeling
-suppressPackageStartupMessages(library(nnet))
-suppressPackageStartupMessages(library(splines))
-
-# Utilities and fonts
-# suppressPackageStartupMessages(library(stringr))
-# suppressPackageStartupMessages(library(showtext))
-# suppressPackageStartupMessages(library(sysfonts))
-# suppressPackageStartupMessages(library(scoringutils))
-# suppressPackageStartupMessages(library(pROC))
-
-# Time series and data transformation
-# suppressPackageStartupMessages(library(zoo))
-# suppressPackageStartupMessages(library(tidyquant))
-
-# Hydrological goodness of fit
-# suppressPackageStartupMessages(library(hydroGOF))
 
 #' Parse model parameters from YAML Configuration
 #'
@@ -71,71 +53,28 @@ suppressPackageStartupMessages(library(splines))
 #'   - name: eweek
 #'     model: 'rw2'
 #'     cyclic: true
-#' @import yaml tidyverse
+#' @import yaml glue stringr
 #' @export
 parse_config <- function(yaml_file, response = "cases") {
   yaml_data <- yaml.load_file(yaml_file)
-  input_s <- yaml_data$input_file
-  features <- yaml_data$features
-  random_effects <- yaml_data$random_effects
   hyperparams <- yaml_data$model$hyperparameters
-  train_start_time <- yaml_data$train$start_time
-  train_end_time <- yaml_data$train$end_time
-  test_start_time <- yaml_data$test$start_time
-  test_end_time <- yaml_data$test$end_time
-  formula_str <- ""
 
-  # Loop through each feature to build the formula
-  for (feature in features) {
-    if (feature$variable_type == "group") {
-      # Construct the feature component using glue for better readability
-      f_component <- glue("f(inla.group({feature$name}, n = {feature$bins}), model = '{feature$model}', scale.model = {tolower(as.character(feature$scale_model))}, hyper = hyperparameters)")
-
-      # Append the feature component to formula_str
-      formula_str <- glue("{formula_str} + {f_component}")
-    } else {
-      stop("Unsupported variable_type: ", feature$variable_type)
-    }
-  }
-
-  # Remove the initial "+" from formula string
-  formula_str <- substring(formula_str, 2)
-
-  # Create hyperparameter list
+  build_feature_str <- function(f) glue("f(inla.group({f$name}, n = {f$bins}), model = '{f$model}', scale.model = {tolower(as.character(f$scale_model))}, hyper = hyperparameters)")
+  build_random_effect_str <- function(re) glue("f({re$name}, model = '{re$model}', cyclic = {re$cyclic}, hyper = hyperparameters)")
+  formula_str <- str_c(lapply(yaml_data$features, build_feature_str), collapse = " + ")
+  random_effects_str <- str_c(lapply(yaml_data$random_effects, build_random_effect_str), collapse = " + ")
   hyperparameters <- list(prec = list(prior = hyperparams[[1]]$prec$prior, param = unlist(hyperparams[[1]]$prec$param)))
 
-  # Initialize random effects string
-  random_effects_str <- ""
-
-  # Loop through each random effect
-  for (random_effect in random_effects) {
-    if (random_effect$model == "rw2") {
-      if (random_effect$cyclic) {
-        random_effects_str <- glue("{random_effects_str} + f({random_effect$name}, model = 'rw2', cyclic = TRUE, hyper = hyperparameters)")
-      } else {
-        random_effects_str <- glue("{random_effects_str} + f({random_effect$name}, model = 'rw2', hyper = hyperparameters)")
-      }
-    } else if (random_effect$model == "iid") {
-      random_effects_str <- glue("{random_effects_str} + f({random_effect$name}, model = 'iid', hyper = hyperparameters)")
-    }
-  }
-
-  # Remove the initial "+" from random effects string
-  random_effects_str <- substring(random_effects_str, 2)
-
-  # Construct the full formula, starting with the response variable
-  full_formula_str <- glue("{response} ~ 1 + {formula_str} + {random_effects_str}")
-  print(full_formula_str)
-  full_formula <- as.formula(full_formula_str)
+  full_formula <- as.formula(glue("{response} ~ 1 + {formula_str} + {random_effects_str}"))
 
   list(
     formula = full_formula,
     hyperparameters = hyperparameters,
-    input_s = input_s,
-    train_start_time = train_start_time,
-    train_end_time = train_end_time,
-    test_start_time = test_start_time,
-    test_end_time = test_end_time
+    input_s = yaml_data$input_file,
+    train_start_time = yaml_data$train$start_time,
+    train_end_time = yaml_data$train$end_time,
+    test_start_time = yaml_data$test$start_time,
+    test_end_time = yaml_data$test$end_time
   )
 }
 
@@ -151,7 +90,6 @@ train_pred_split <- function(csv_file_path = "/workplace/data.csv",
   list(train_df = train_df, pred_df = pred_df)
 }
 
-# make this an object
 train <- function(df, formula) {
   model <- inla(formula,
     family = "nbinomial",
