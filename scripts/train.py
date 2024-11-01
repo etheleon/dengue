@@ -47,6 +47,7 @@ def get_train_test_data(start_time, end_time) -> pd.DataFrame:
     days_no_rain_df = get_days_no_rain(start_time, end_time)
     target_df = get_target(start_time, end_time)
 
+	# TODO(WESLEY): Investigate why there's duplicates
     df = (
         temp_df.join(sero_df, on=["year", "eweek"])
         .join(elnino_df, on=["year", "eweek"])
@@ -61,6 +62,7 @@ def get_train_test_data(start_time, end_time) -> pd.DataFrame:
 
 if __name__ == "__main__":
     import argparse
+    from dynaconf import settings
 
     parser = argparse.ArgumentParser(description="Prepare training data for dengue case prediction.")
     parser.add_argument("--start_time", type=str, default="2020-01-01", help="Start date for data retrieval.")
@@ -72,7 +74,7 @@ if __name__ == "__main__":
 
     df = get_train_test_data(start_time, end_time)
     df.drop_duplicates(inplace=True)
-    print(df)
+    # print(df)
     upsert_dataframe_to_db(
         df=df, ddl_file=None, schema="national_analysis", table_name="inla_model_ds", connection_params_path=None
     )
