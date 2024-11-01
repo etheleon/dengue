@@ -12,6 +12,7 @@ import psycopg2
 import toml
 from pythonjsonlogger import jsonlogger
 from sqlalchemy import create_engine, text
+from dynaconf import settings
 
 logger = logging.getLogger("db_logger")
 logger.setLevel(logging.INFO)
@@ -38,7 +39,7 @@ def read_excel_file(file_path, sheet_name="Sheet1"):
 
 
 @contextmanager
-def postgres_connection(config_file=".secrets.toml"):
+def postgres_connection():
     """Establish a connection to a PostgreSQL database using the provided configuration file.
 
     Args:
@@ -55,12 +56,12 @@ def postgres_connection(config_file=".secrets.toml"):
     """
     conn = None
     try:
-        cfg = read_config(config_file if config_file else None)
-        connection_string = "postgresql+psycopg2://{}:{}@{}:5432/{}".format(
-            cfg["user"],
-            cfg["passwd"],
-            cfg["host"],
-            cfg["dbname"],
+        connection_string = "postgresql+psycopg2://{}:{}@{}:{}/{}".format(
+            settings.DB_USERNAME,
+            settings.DB_PASSWORD,
+            settings.DB_HOST,
+            settings.DB_PORT,
+            settings.DB_NAME,
         )
         engine = create_engine(connection_string)
         yield engine
@@ -228,9 +229,7 @@ def upsert_dataframe_to_db(
             create_table_query = ddl.read()
 
         sql_statements = create_table_query.split(";")
-        if connection_params_path is None:
-            connection_params_path = read_config()
-        with postgres_connection(connection_params_path) as engine:
+        with postgres_connection() as engine:
             with engine.begin() as connection:
                 try:
                     # Execute each SQL statement individually
@@ -311,35 +310,3 @@ def download_dataframe_from_db(query: str) -> pd.DataFrame:
             extra={"error": str(e)},
         )
         raise e
-
-
-def read_config(config_file=".secrets.toml"):
-    """Reads the database configuration from a TOML file or environment variables.
-
-    Args:
-        config_file (str): The path to the configuration file. Defaults to ".secrets.toml".
-
-    Returns:
-        dict: A dictionary containing the database connection parameters.
-
-    Raises:
-        Exception: If neither a valid configuration file nor environment variables are found.
-    """
-    # If config_file is provided, try to read from it
-    if config_file and os.path.exists(config_file):
-        try:
-            config = toml.load(config_file)
-            return config["database"]
-        except Exception as e:
-            raise Exception(f"Error reading config file {config_file}: {e}")
-
-    # If no config file is provided, fall back to environment variables
-    try:
-        return {
-            "user": os.getenv("DB_USER"),
-            "passwd": os.getenv("DB_PASSWORD"),
-            "host": os.getenv("DB_HOST"),
-            "dbname": os.getenv("DB_NAME"),
-        }
-    except Exception as e:
-        raise Exception(f"Error reading configuration from environment variables: {e}")
