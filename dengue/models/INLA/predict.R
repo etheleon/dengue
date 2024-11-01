@@ -2,15 +2,9 @@
 
 suppressPackageStartupMessages(library(argparse))
 suppressPackageStartupMessages(library(yaml))
-suppressPackageStartupMessages(library(glue))
 suppressPackageStartupMessages(library(tidyr))
 suppressPackageStartupMessages(library(stringr))
-
-
-# Spatial modeling and Bayesian inference
 suppressPackageStartupMessages(library(INLA))
-
-# Machine learning and statistical modeling
 
 #' Parse model parameters from YAML Configuration
 #'
@@ -59,13 +53,13 @@ parse_config <- function(yaml_file, response = "cases") {
   yaml_data <- yaml.load_file(yaml_file)
   hyperparams <- yaml_data$model$hyperparameters
 
-  build_feature_str <- function(f) glue("f(inla.group({f$name}, n = {f$bins}), model = '{f$model}', scale.model = {tolower(as.character(f$scale_model))}, hyper = hyperparameters)")
-  build_random_effect_str <- function(re) glue("f({re$name}, model = '{re$model}', cyclic = {re$cyclic}, hyper = hyperparameters)")
+  build_feature_str <- function(f) glue::glue("f(inla.group({f$name}, n = {f$bins}), model = '{f$model}', scale.model = {tolower(as.character(f$scale_model))}, hyper = hyperparameters)")
+  build_random_effect_str <- function(re) glue::glue("f({re$name}, model = '{re$model}', cyclic = {re$cyclic}, hyper = hyperparameters)")
   formula_str <- str_c(lapply(yaml_data$features, build_feature_str), collapse = " + ")
   random_effects_str <- str_c(lapply(yaml_data$random_effects, build_random_effect_str), collapse = " + ")
   hyperparameters <- list(prec = list(prior = hyperparams[[1]]$prec$prior, param = unlist(hyperparams[[1]]$prec$param)))
 
-  full_formula <- as.formula(glue("{response} ~ 1 + {formula_str} + {random_effects_str}"))
+  full_formula <- as.formula(glue::glue("{response} ~ 1 + {formula_str} + {random_effects_str}"))
 
   list(
     formula = full_formula,
@@ -84,7 +78,7 @@ train_pred_split <- function(csv_file_path = "/workplace/data.csv",
                              pred_start,
                              pred_end,
                              horizon = 0) {
-  df <- tidyverse::read_csv(csv_file_path)
+  df <- readr::read_csv(csv_file_path)
   train_df <- df |> filter(date >= train_start, date < train_end)
   pred_df <- df |> filter(date >= pred_start, date < pred_end)
   list(train_df = train_df, pred_df = pred_df)
