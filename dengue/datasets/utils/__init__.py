@@ -25,8 +25,8 @@ def get_target(start_date: datetime, end_date: datetime) -> pd.DataFrame:
     query = f"""--sql
       SELECT 
         to_char(date, 'IYYY') AS year,
-        to_Char(date, 'IW') as eweek,
-        cases_total
+        to_Char(date, 'IW') AS eweek,
+        cases_total AS cases
       FROM national_analysis.dengue_agg
       WHERE date >= timestamp '{start_time_s}' AND date < timestamp '{end_time_s}'
     """

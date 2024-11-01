@@ -79,8 +79,15 @@ train_pred_split <- function(csv_file_path = "/workplace/data.csv",
                              pred_end,
                              horizon = 0) {
   df <- readr::read_csv(csv_file_path)
-  train_df <- df |> filter(date >= train_start, date < train_end)
-  pred_df <- df |> filter(date >= pred_start, date < pred_end)
+
+  create_newdate <- function(date_s){
+    as.integer(paste0(isoyear(date_s), str_pad(isoweek(date_s), width = 2, pad = "0"))
+  }
+  df <- df |>
+    mutate(yearmonth = as.integer(paste0(year, str_pad(eweek, width = 2, pad = "0"))))
+
+  train_df <- df |> filter(yearmonth >= create_newdate(train_start), yearmonth < create_newdate(train_end))
+  pred_df <- df |> filter(yearmonth >= create_newdate(pred_start), yearmonth < create_newdate(pred_end))
   list(train_df = train_df, pred_df = pred_df)
 }
 

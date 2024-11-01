@@ -67,6 +67,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Prepare training data for dengue case prediction.")
     parser.add_argument("--start_time", type=str, default="2020-01-01", help="Start date for data retrieval.")
     parser.add_argument("--end_time", type=str, default="2023-12-31", help="End date for data retrieval.")
+    parser.add_argument("--to-csv", type=str, default=False, help="Path to save the data as a CSV file.")
     args = parser.parse_args()
 
     start_time = datetime.strptime(args.start_time, "%Y-%m-%d")
@@ -75,6 +76,9 @@ if __name__ == "__main__":
     df = get_train_test_data(start_time, end_time)
     df.drop_duplicates(inplace=True)
     # print(df)
-    upsert_dataframe_to_db(
-        df=df, ddl_file=None, schema="national_analysis", table_name="inla_model_ds", connection_params_path=None
-    )
+    if args.to_csv:
+        df.to_csv(args.to_csv, index=False)
+    else:
+        upsert_dataframe_to_db(
+            df=df, ddl_file=None, schema="national_analysis", table_name="inla_model_ds", connection_params_path=None
+        )

@@ -9,6 +9,26 @@ dataset: national_analysis.inla_model
 horizon: 0
 model:
   horizon: 0
+  family: 'nbinomial'
+  offset: TBD
+  control:
+    inla:
+      strategy: 'adaptive'
+    predictor:
+      link: 1
+      compute: true
+    compute:
+      return.marginals.predictor: true
+      dic: true
+      waic: true
+      cpo: true
+      config: true
+    fixed: 
+      correlation.matrix: true
+      prec.intercept: 1
+      prec: 1
+  num.threads: 40A
+  verbose: false
   hyperparameters: 
     - prec:
         prior: 'pc.prec'
