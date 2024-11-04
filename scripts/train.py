@@ -21,7 +21,7 @@ from datetime import datetime
 
 import pandas as pd
 
-from dengue.datasets.utils import get_target
+from dengue.datasets.utils import get_population, get_target
 from dengue.features.climate import get_days_no_rain, get_elnino34_ssta_weekly, get_temp_weekly
 from dengue.features.serology import get_time_since_switch
 from dengue.utils import upsert_dataframe_to_db
@@ -46,13 +46,15 @@ def get_train_test_data(start_time, end_time) -> pd.DataFrame:
     elnino_df = get_elnino34_ssta_weekly(start_time, end_time)
     days_no_rain_df = get_days_no_rain(start_time, end_time)
     target_df = get_target(start_time, end_time)
+    population_df = get_population()
 
-	# TODO(WESLEY): Investigate why there's duplicates
+    # TODO(WESLEY): Investigate why there's duplicates
     df = (
         temp_df.join(sero_df, on=["year", "eweek"])
         .join(elnino_df, on=["year", "eweek"])
         .join(days_no_rain_df, on=["year", "eweek"])
         .join(target_df, on=["year", "eweek"])
+        .join(population_df, on=["year"])
         .reset_index()
     )
     df.days_since_switch = df.days_since_switch.fillna(0)
@@ -62,12 +64,20 @@ def get_train_test_data(start_time, end_time) -> pd.DataFrame:
 
 if __name__ == "__main__":
     import argparse
+
     from dynaconf import settings
 
     parser = argparse.ArgumentParser(description="Prepare training data for dengue case prediction.")
     parser.add_argument("--start_time", type=str, default="2020-01-01", help="Start date for data retrieval.")
     parser.add_argument("--end_time", type=str, default="2023-12-31", help="End date for data retrieval.")
-    parser.add_argument("--to-csv", type=str, default=False, help="Path to save the data as a CSV file.")
+    parser.add_argument(
+        "--to-csv",
+        type=str,
+        default=None,
+        help="Path to save the data as a CSV file. defaults to None which will save to the database.",
+    )
+    parser.add_argument("--schema", type=str, default="national_analysis", help="Schema to save the data to.")
+    parser.add_argument("--table", type=str, default="inla_model_ds", help="Table to save the data to.")
     args = parser.parse_args()
 
     start_time = datetime.strptime(args.start_time, "%Y-%m-%d")
@@ -75,10 +85,7 @@ if __name__ == "__main__":
 
     df = get_train_test_data(start_time, end_time)
     df.drop_duplicates(inplace=True)
-    # print(df)
     if args.to_csv:
         df.to_csv(args.to_csv, index=False)
     else:
-        upsert_dataframe_to_db(
-            df=df, ddl_file=None, schema="national_analysis", table_name="inla_model_ds", connection_params_path=None
-        )
+        upsert_dataframe_to_db(df=df, ddl_file=None, schema=args.schema, table_name=args.table)

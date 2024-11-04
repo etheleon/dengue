@@ -5,7 +5,8 @@ from os.path import join
 
 import numpy as np
 import pandas as pd
-from utils import read_excel_file, upsert_dataframe_to_db
+
+from dengue.utils import read_excel_file, upsert_dataframe_to_db
 
 
 def parse_release_site_data(data_root: str, file="hdb.xlsx") -> pd.DataFrame:
@@ -59,4 +60,4 @@ if __name__ == "__main__":
         ]
     )
     print(df)
-    upsert_dataframe_to_db(df=df, ddl_file=args.ddl_root, table_name="site_release", connection_params_path=args.secret)
+    upsert_dataframe_to_db(df=df, ddl_file=args.ddl_root, table_name="site_release")

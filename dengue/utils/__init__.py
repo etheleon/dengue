@@ -10,9 +10,9 @@ from typing import List, Optional
 import pandas as pd
 import psycopg2
 import toml
+from dynaconf import settings
 from pythonjsonlogger import jsonlogger
 from sqlalchemy import create_engine, text
-from dynaconf import settings
 
 logger = logging.getLogger("db_logger")
 logger.setLevel(logging.INFO)
@@ -202,7 +202,6 @@ def upsert_dataframe_to_db(
     df: pd.DataFrame,
     ddl_file: Optional[str],
     table_name: str,
-    connection_params_path: Optional[str],
     schema="national_analysis",
 ):
     """Upserts a DataFrame into a database table.
@@ -214,7 +213,6 @@ def upsert_dataframe_to_db(
         df (pd.DataFrame): The DataFrame containing the data to be upserted.
         ddl_file (str): The path to the DDL file containing the SQL statements for creating/updating the table.
         table_name (str): The name of the table where the data will be upserted.
-        connection_params_path (str): The path to the file containing the database connection parameters.
 
     Returns:
         None
@@ -275,7 +273,6 @@ def download_dataframe_from_db(query: str) -> pd.DataFrame:
 
     Args:
         query (str): The SQL query to execute for retrieving the data.
-        connection_params_path (str): The path to the file containing the database connection parameters.
 
     Returns:
         pd.DataFrame: The data retrieved from the database as a pandas DataFrame.

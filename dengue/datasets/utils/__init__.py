@@ -35,3 +35,21 @@ def get_target(start_date: datetime, end_date: datetime) -> pd.DataFrame:
     df.eweek = df.eweek.astype(int)
     df = df.set_index(["year", "eweek"])
     return df
+
+
+def get_population() -> pd.DataFrame:
+    """Retrieves population data.
+
+    Returns:
+      pd.DataFrame: A DataFrame containing the year, epidemiological week, and total cases of dengue.
+    """
+    query = """--sql
+      SELECT 
+        year,
+        population
+      FROM national_analysis.population
+    """
+    df = download_dataframe_from_db(query)
+    df.year = df.year.astype(int)
+    df = df.set_index(["year"])
+    return df

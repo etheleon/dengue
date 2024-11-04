@@ -17,4 +17,5 @@ repos:
     rev: v0.4.3
     hooks:
     - id: lintr
-      args: [--warn_only, --key=value]
+      args: [--warn_only]
+      verbose: true

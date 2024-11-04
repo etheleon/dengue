@@ -52,7 +52,6 @@ suppressPackageStartupMessages(library(INLA))
 parse_config <- function(yaml_file, response = "cases") {
   yaml_data <- yaml.load_file(yaml_file)
   hyperparams <- yaml_data$model$hyperparameters
-
   build_feature_str <- function(f) glue::glue("f(inla.group({f$name}, n = {f$bins}), model = '{f$model}', scale.model = {tolower(as.character(f$scale_model))}, hyper = hyperparameters)")
   build_random_effect_str <- function(re) glue::glue("f({re$name}, model = '{re$model}', cyclic = {re$cyclic}, hyper = hyperparameters)")
   formula_str <- str_c(lapply(yaml_data$features, build_feature_str), collapse = " + ")
@@ -63,6 +62,7 @@ parse_config <- function(yaml_file, response = "cases") {
 
   list(
     formula = full_formula,
+    inla_model = yaml_data$model:inla
     hyperparameters = hyperparameters,
     input_s = yaml_data$input_file,
     train_start_time = yaml_data$train$start_time,
@@ -91,16 +91,16 @@ train_pred_split <- function(csv_file_path = "/workplace/data.csv",
   list(train_df = train_df, pred_df = pred_df)
 }
 
-train <- function(df, formula) {
+train <- function(df, formula, inla_m) {
   model <- inla(formula,
-    family = "nbinomial",
-    offset = log(pop / 100000),
-    control.inla = list(strategy = "adaptive"),
-    control.predictor = list(link = 1, compute = TRUE),
-    control.compute = list(return.marginals.predictor = TRUE, dic = TRUE, waic = TRUE, cpo = TRUE, config = TRUE), # which model assessment criteria to include
-    control.fixed = list(correlation.matrix = TRUE, prec.intercept = 1, prec = 1),
-    num.threads = 4,
-    verbose = FALSE,
+    family = inla_m$family,
+    offset = eval(parse(text = inla_m$offset)),
+    control.inla = inla_m$control.inla,
+    control.predictor = inla_m$control.predictor,
+    control.compute = inla_m$control.compute,
+    control.fixed = inla_m$control.fixed,
+    num.threads = inla_m$num.threads,
+    verbose = inla_m$verbose,
     data = df
   )
   model
