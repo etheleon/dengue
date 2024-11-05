@@ -4,6 +4,7 @@
 
 from datetime import datetime
 
+import numpy as np
 import pandas as pd
 
 from dengue.utils import download_dataframe_from_db
@@ -52,4 +53,5 @@ def get_population() -> pd.DataFrame:
     df = download_dataframe_from_db(query)
     df.year = df.year.astype(int)
     df = df.set_index(["year"])
+    # df = df.assign(population=lambda x: np.log(x.population/ 100000))
     return df

@@ -2,7 +2,7 @@
 
 suppressPackageStartupMessages(library(argparse))
 suppressPackageStartupMessages(library(yaml))
-suppressPackageStartupMessages(library(tidyr))
+suppressPackageStartupMessages(library(tidyverse))
 suppressPackageStartupMessages(library(stringr))
 suppressPackageStartupMessages(library(INLA))
 
@@ -52,17 +52,17 @@ suppressPackageStartupMessages(library(INLA))
 parse_config <- function(yaml_file, response = "cases") {
   yaml_data <- yaml.load_file(yaml_file)
   hyperparams <- yaml_data$model$hyperparameters
-  build_feature_str <- function(f) glue::glue("f(inla.group({f$name}, n = {f$bins}), model = '{f$model}', scale.model = {tolower(as.character(f$scale_model))}, hyper = hyperparameters)")
+  build_feature_str <- function(f) glue::glue("f(inla.group({f$name}, n = {f$bins}), model = '{f$model}', scale.model = {as.character(f$scale_model)}, hyper = hyperparameters)")
   build_random_effect_str <- function(re) glue::glue("f({re$name}, model = '{re$model}', cyclic = {re$cyclic}, hyper = hyperparameters)")
   formula_str <- str_c(lapply(yaml_data$features, build_feature_str), collapse = " + ")
   random_effects_str <- str_c(lapply(yaml_data$random_effects, build_random_effect_str), collapse = " + ")
   hyperparameters <- list(prec = list(prior = hyperparams[[1]]$prec$prior, param = unlist(hyperparams[[1]]$prec$param)))
-
-  full_formula <- as.formula(glue::glue("{response} ~ 1 + {formula_str} + {random_effects_str}"))
+  offset <- glue::glue("offset({yaml_data$model$inla$offset})")
+  full_formula <- as.formula(glue::glue("{response} ~ 1 + {formula_str} + {random_effects_str} + {offset}"))
 
   list(
     formula = full_formula,
-    inla_model = yaml_data$model:inla
+    inla_model = yaml_data$model$inla,
     hyperparameters = hyperparameters,
     input_s = yaml_data$input_file,
     train_start_time = yaml_data$train$start_time,
@@ -72,33 +72,59 @@ parse_config <- function(yaml_file, response = "cases") {
   )
 }
 
-train_pred_split <- function(csv_file_path = "/workplace/data.csv",
-                             train_start,
-                             train_end,
-                             pred_start,
-                             pred_end,
-                             horizon = 0) {
-  df <- readr::read_csv(csv_file_path)
 
-  create_newdate <- function(date_s){
-    as.integer(paste0(isoyear(date_s), str_pad(isoweek(date_s), width = 2, pad = "0"))
+#' Get Dataset
+#'
+#' This function reads dengue forecasting dataset from specified CSV file path and returns a data frame.
+#'
+#' @param csv_file_path A string representing the path to the CSV file.
+#'                      Default is "/workplace/data.csv".
+#'
+#' @return A data frame containing the dataset read from the CSV file.
+#'
+#' @examples
+#' data <- get_dataset("/path/to/your/data.csv")
+#' head(data)
+#' @title Get Dataset
+#' @description Given the train and test periods censor the cases column and keep original column as cases_actual
+#' The function also includes a transformation step where it alters the 'cases' column.
+#'
+#' @param csv_file_path A string representing the file path to the CSV file. Default is "/workplace/data.csv".
+#'
+#' @return A dataframe containing the dataset with the transformed 'date' and 'cases' columns.
+#'
+#' @examples
+#' \dontrun{
+#' dataset <- get_dataset("/path/to/your/data.csv")
+#' }
+get_dataset <- function(csv_file_path = "/workplace/data.csv",
+                        train_start,
+                        train_end,
+                        pred_start,
+                        pred_end,
+                        horizon = 0) {
+
+  create_newdate <- function(date_s) {  # nolint
+    as.integer(paste0(lubridate::isoyear(date_s), str_pad(lubridate::isoweek(date_s), width = 2, pad = "0")))
   }
-  df <- df |>
-    mutate(yearmonth = as.integer(paste0(year, str_pad(eweek, width = 2, pad = "0"))))
-
-  train_df <- df |> filter(yearmonth >= create_newdate(train_start), yearmonth < create_newdate(train_end))
-  pred_df <- df |> filter(yearmonth >= create_newdate(pred_start), yearmonth < create_newdate(pred_end))
-  list(train_df = train_df, pred_df = pred_df)
+  readr::read_csv(csv_file_path, show_col_types = FALSE) |>
+    tidyr::mutate(yearmonth = as.integer(paste0(year, str_pad(eweek, width = 2, pad = "0")))) |>  # nolint
+    tidyr::mutate(cases_actual = cases) |>  # nolint
+    tidyr::mutate(cases = dplyr::case_when(  # nolint
+      yearmonth >= create_newdate(train_start) & yearmonth < create_newdate(train_end) ~ cases,
+      yearmonth >= create_newdate(pred_start) & yearmonth < create_newdate(pred_end) ~ NA,
+      TRUE ~ NA
+    ))
 }
 
-train <- function(df, formula, inla_m) {
-  model <- inla(formula,
+
+predict <- function(df, formula, inla_m) {
+  model <- inla::inla(formula,
     family = inla_m$family,
-    offset = eval(parse(text = inla_m$offset)),
-    control.inla = inla_m$control.inla,
-    control.predictor = inla_m$control.predictor,
-    control.compute = inla_m$control.compute,
-    control.fixed = inla_m$control.fixed,
+    control.inla = inla_m$control$inla,
+    control.predictor = inla_m$control$predictor,
+    control.compute = inla_m$control$compute,
+    control.fixed = inla_m$control$fixed,
     num.threads = inla_m$num.threads,
     verbose = inla_m$verbose,
     data = df
@@ -106,28 +132,6 @@ train <- function(df, formula, inla_m) {
   model
 }
 
-#' @param nsamples N(samples) to extract from model posterior
-predict <- function(model, nsamples) {
-  xx <- inla.posterior.sample(nsamples, mod)
-  xx_s <- inla.posterior.sample.eval(
-    function(...) {
-      c( # nolint
-        theta[1], # This is the size parameter of the negative binomial distribution (overdispersion)
-        Predictor
-      )
-    },
-    xx
-  )
-  xx_s <- xx_s[c(1, n + 1), ]
-  y_pred <- matrix(NA, 1, nsamples)
-  for (i in 1:nsamples) {
-    xx_sample <- xx_s[, i]
-    y_pred[, i] <- rnbinom(1, mu = exp(xx_sample[-1]), size = xx_sample[1])
-    if (is.na(y_pred[, i])) {
-      print(paste0("NA prediction generated with mu = ", exp(xx_sample[-1]), " and size = ", xx_sample[1]))
-    }
-  }
-}
 
 parser <- ArgumentParser()
 parser$add_argument(
@@ -137,66 +141,15 @@ parser$add_argument(
   help = "Specify path to config.yaml"
 )
 args <- parser$parse_args()
+
 config <- parse_config(args$config)
 
-datasets <- train_pred_split(
-  csv_file_path = config$input_file,
+df <- get_dataset(
+  csv_file_path = config$input_s,
   train_start = config$train_start_time,
   train_end = config$train_end_time,
-  pred_start = config$pred_start_time,
-  pred_end = config$pred_end_time
+  pred_start = config$test_start_time,
+  pred_end = config$test_end_time
 )
-
-model <- INLA_model(config)
-model.train(datasets$train_df)
-model.predict(datasets$pred_df)
-
-# dengue_singapore <- read_csv() %>%
-#   mutate(date = as.Date(date, format = "%d/%m/%Y"))
-#
-# df_eval <- df_model |>
-#   group_by(year, month) |>
-#   mutate(month_index = cur_group_id()) |>
-#   ungroup() |>
-#   mutate(date_index = row_number()) |>
-#   dplyr::select(
-#     date, date_index, year, year_index, month, month_index,
-#     eweek, cases, pop,
-#     time_since_switch,
-#     max_t_scale_12_wk_avg_0,
-#     nino34_12_wk_avg_4,
-#     days_no_rain_12_wk_total_0,
-#   ) |>
-#   # As days without rain is a cumulative variable,
-#   # scale up the lagged versions to what would be expected over a 12 week period
-#   mutate(
-#     days_no_rain_10_wk_total_2 = days_no_rain_10_wk_total_2 * 12 / 10,
-#     days_no_rain_8_wk_total_4 = days_no_rain_8_wk_total_4 * 12 / 8,
-#     days_no_rain_6_wk_total_6 = days_no_rain_6_wk_total_6 * 12 / 6,
-#     days_no_rain_4_wk_total_8 = days_no_rain_4_wk_total_8 * 12 / 4
-#   ) |>
-#   mutate(
-#     time_since_switch_2 = time_since_switch_2 + 2,
-#     time_since_switch_4 = time_since_switch_4 + 4,
-#     time_since_switch_6 = time_since_switch_6 + 6,
-#     time_since_switch_8 = time_since_switch_8 + 8
-#   )
-#
-# year_month <- df_eval |>
-#   group_by(year_index, month) |>
-#   filter(year_index >= 10) |>
-#   summarise(.groups = "keep")
-#
-# df_eval <- df_eval |> left_join(thresholds, by = c("year_index", "month"))
-#
-# # Run TSCV predictions ---------------------------------------------------------------------
-#
-# tscv_predictions_weekly(
-#   data_input = df_eval,
-#   horizon = horizon,
-#   form_input = args$model_type,
-#   yearly_re = args$year_as_re, # Either: "estimated", "na"
-#   filename = "tscv-preds-weekly"
-# )
-#
-# flog.info(paste0("TSCV predictions finished for horizon ", horizon, "."))
+model <- predict(df, config$formula, config$inla_m)
+# model$summary.fixed

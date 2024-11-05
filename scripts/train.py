@@ -57,6 +57,7 @@ def get_train_test_data(start_time, end_time) -> pd.DataFrame:
         .join(population_df, on=["year"])
         .reset_index()
     )
+    df["date"] = pd.to_datetime(df["year"].astype(str) + df["eweek"].astype(str) + "1", format="%G%V%u")
     df.days_since_switch = df.days_since_switch.fillna(0)
     df.days_since_switch = df.days_since_switch.astype(int)
     return df
