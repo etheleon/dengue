@@ -3,17 +3,21 @@
 import importlib.resources
 
 import rpy2.robjects as robjects
-from rpy2.robjects import pandas2ri, r
+from rpy2.robjects import pandas2ri
+from yaml import safe_load
 
-# Activate pandas conversion
+from dengue.utils import download_dataframe_from_db
+
 pandas2ri.activate()
 
-# Load the R script containing the INLAForecastModel class
 with importlib.resources.path("dengue.models.INLA", "model.R") as r_script_path:
-    robjects.r["source"](str(r_script_path))
+    robjects.r(f"""source('{r_script_path}')""")
 
-# Reference to the R class INLAForecastModel
-R_INLAForecastModel = r["INLAForecastModel"]
+inla_forecast_model_constructor = robjects.r["inla_forecast_model"]
+
+parse_config_method = robjects.r["inla_forecast_model.parse_config"]
+generate_dataset_method = robjects.r["inla_forecast_model.generate_dataset"]
+fit_method = robjects.r["inla_forecast_model.fit"]
 
 
 class INLAForecastModel_V1:
@@ -41,20 +45,32 @@ class INLAForecastModel_V1:
 
     def __init__(self, config_file):
         """Initialize the INLAForecastModel with a configuration file."""
-        self.r_instance = R_INLAForecastModel.new(config_file=config_file)
+        with open(config_file, "r") as file:
+            config = safe_load(file)
+        tablename = config["dataset"]
+        download_dataframe_from_db(f"SELECT * FROM {tablename}").to_csv("/tmp/data.csv", index=False)
+        self.r_instance = inla_forecast_model_constructor(config_file)
 
     def generateDataset(self):
         """Generate the dataset based on the configuration."""
-        self.r_instance.generateDataset()
+        self.r_instance = generate_dataset_method(self.r_instance, "/tmp/data.csv")
 
     def fit(self):
         """Fit the model with the generated dataset."""
-        self.r_instance.fit()
+        self.r_instance = fit_method(self.r_instance)
 
     def get_data(self):
         """Retrieve the dataset as a pandas DataFrame."""
-        return pandas2ri.rpy2py(self.r_instance.data)
+        if "data" in self.r_instance.names:
+            return pandas2ri.rpy2py(self.r_instance.rx2("data"))
+        else:
+            print("Data has not been generated.")
+            return None
 
     def get_fitted_values(self):
         """Retrieve fitted values as a pandas DataFrame."""
-        return pandas2ri.rpy2py(self.r_instance.fitted_values)
+        if "fitted_values" in self.r_instance.names:
+            return pandas2ri.rpy2py(self.r_instance.rx2("fitted_values"))
+        else:
+            print("Model has not been fitted.")
+            return None
