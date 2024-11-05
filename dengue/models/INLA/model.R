@@ -57,7 +57,7 @@ inla_forecast_model.generate_dataset <- function(self, input_s) {
   self$data <- readr::read_csv(input_s, show_col_types = FALSE) |>
     dplyr::mutate(yearmonth = as.integer(paste0(year, str_pad(eweek, width = 2, pad = "0")))) |>
     dplyr::mutate(cases_actual = cases) |>
-    dplyr::mutate(date = as.character(date)) |>
+    dplyr::mutate(date = as.character(date)) |> # issue with tibble 2 py https://github.com/rpy2/rpy2/issues/758
     dplyr::mutate(cases = dplyr::case_when(
       yearmonth >= create_newdate(self$train_start_time) & yearmonth < create_newdate(self$train_end_time) ~ cases,
       yearmonth >= create_newdate(self$test_start_time) & yearmonth < create_newdate(self$test_end_time) ~ NA,
