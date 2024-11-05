@@ -1,4 +1,4 @@
-input_file: data.csv.gz
+input_file: /home/wesley/github/etheleon/national_analysis/data.csv
 train:
   start_time: 2020-01-01
   end_time: 2022-12-31
@@ -9,32 +9,56 @@ dataset: national_analysis.inla_model
 horizon: 0
 model:
   horizon: 0
+  inla:
+    family: 'nbinomial'
+    offset: 'log(population/100000)'
+    control:
+      inla:
+        strategy: 'adaptive'
+      predictor:  # to compute predictions
+        link: 1
+        compute: true
+      compute:
+        return.marginals.predictor: true
+        dic: true
+        waic: true
+        cpo: true
+        config: true
+      fixed: 
+        correlation.matrix: true
+        prec.intercept: 1
+        prec: 1
+    num.threads: 4
+    verbose: false
   hyperparameters: 
     - prec:
         prior: 'pc.prec'
-        param: [0.5, 0.01]
+        param: [0.5,x: 0.01]
 features:
-  - name: time_since_switch
+  - name: days_since_switch
     variable_type: group
     bins: 18
     model: 'rw2'
-    scale_model: true
+    scale_model: 'TRUE'
   - name: max_t_scale_12_wk_avg_0
     variable_type: group
+    bins: 25
     model: 'rw2'
-    scale_model: true
+    scale_model: 'TRUE'
   - name: nino34_12_wk_avg_4
     variable_type: group
     bins: 12
     model: 'rw2'
-    scale_model: true
+    scale_model: 'TRUE'
   - name: days_no_rain_12_wk_total_0
     variable_type: group
+    bins: 25
     model: 'rw2'
-    scale_model: true
+    scale_model: 'TRUE'
 random_effects:
-  - name: year_index
+  - name: year
     model: 'iid'
+    cyclic: 'FALSE'
   - name: eweek
     model: 'rw2'
-    cyclic: true
+    cyclic: 'TRUE'
