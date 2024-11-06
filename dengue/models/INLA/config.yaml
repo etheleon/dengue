@@ -1,12 +1,11 @@
-input_file: /home/wesley/github/etheleon/national_analysis/data.csv
 train:
   start_time: 2020-01-01
   end_time: 2022-12-31
 test:
   start_time: 2023-01-01
   end_time: 2023-12-31
-dataset: national_analysis.inla_model
-horizon: 0
+dataset: national_analysis.inla_model_ds
+target: cases
 model:
   horizon: 0
   inla:
