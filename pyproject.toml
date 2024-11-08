@@ -16,6 +16,8 @@ psycopg2-binary = "^2.9.10"
 pandas = "^2.2.3"
 dynaconf = "^3.2.6"
 rpy2 = "^3.5.16"
+properscoring = "^0.1"
+types-PyYAML = "^6.0.12.20240917"
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.10.0"
@@ -23,6 +25,7 @@ isort = "^5.13.2"
 flake8 = "^7.1.1"
 jupyterlab = "^4.3.0"
 plotnine = "^0.14.1"
+pandas-stubs = "^2.2.3.241009"
 
 [build-system]
 requires = ["poetry-core"]
