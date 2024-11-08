@@ -14,7 +14,8 @@ inla_forecast_model <- function(config_file) {
     test_end_time = NULL,
     data = NULL,
     model = NULL, # This will hold the INLA model after fitting
-    fitted_values = NULL
+    fitted_values = NULL,
+    metrics = NULL
   )
   # Set the class attribute to define it as an S3 object
   class(self) <- "inla_forecast_model"
@@ -24,7 +25,7 @@ inla_forecast_model <- function(config_file) {
   return(self)
 }
 
-inla_forecast_model.parse_config <- function(self, config_file) {
+inla_forecast_model.parse_config <- function(self, config_file) { # nolint
   yaml_data <- yaml.load_file(config_file)
   self$inla_model <- yaml_data$model$inla
   self$train_start_time <- yaml_data$train$start_time
@@ -49,14 +50,14 @@ inla_forecast_model.parse_config <- function(self, config_file) {
   return(self)
 }
 
-inla_forecast_model.generate_dataset <- function(self, input_s) {
-  create_newdate <- function(date_s) {
+inla_forecast_model.transform <- function(self, input_s) { # nolint
+  create_newdate <- function(date_s) { # nolint
     as.integer(paste0(lubridate::isoyear(date_s), str_pad(lubridate::isoweek(date_s), width = 2, pad = "0")))
   }
 
   self$data <- readr::read_csv(input_s, show_col_types = FALSE) |>
-    dplyr::mutate(yearmonth = as.integer(paste0(year, str_pad(eweek, width = 2, pad = "0")))) |>
-    dplyr::mutate(cases_actual = cases) |>
+    dplyr::mutate(yearmonth = as.integer(paste0(year, str_pad(eweek, width = 2, pad = "0")))) |> # nolint
+    dplyr::mutate(cases_actual = cases) |> # nolint
     dplyr::mutate(date = as.character(date)) |> # issue with tibble 2 py https://github.com/rpy2/rpy2/issues/758
     dplyr::mutate(cases = dplyr::case_when(
       yearmonth >= create_newdate(self$train_start_time) & yearmonth < create_newdate(self$train_end_time) ~ cases,
@@ -66,8 +67,8 @@ inla_forecast_model.generate_dataset <- function(self, input_s) {
   return(self)
 }
 
-inla_forecast_model.fit <- function(self) {
-  hyperparameters <- self$hyperparameters
+inla_forecast_model.fit <- function(self) { # nolint
+  hyperparameters <- self$hyperparameters # nolint
   environment(self$formula) <- environment()
   model <- INLA::inla(
     self$formula,
@@ -88,5 +89,7 @@ inla_forecast_model.fit <- function(self) {
     lower = self$model$summary.fitted.values$`0.025quant`,
     upper = self$model$summary.fitted.values$`0.975quant`
   )
+
+  self$metrics <- list(cpo = self$model$cpo$cpo, dic = self$model$dic$dic, waic = self$model$waic)
   return(self)
 }
